@@ -1,56 +1,62 @@
-# Source and documentation style
+# House style
 
-Binding for every shipped file. The mod is published on Nexus and GitHub; source is read by
-strangers with no context on how it was built.
+Conventions for source and documentation in this repository.
 
-## Prose rules
+## Comments
 
-**Comments explain the code as it stands.** They state intent, constraint, and the reason a
-non-obvious choice was made. They never narrate how the code came to be written, what was tried
-first, or what somebody discovered. A reader wants to know why the line is there, not its history.
+Comment the non-obvious. A comment that restates its own code is noise, and noise trains the
+reader to skip comments that matter.
 
-Banned outright:
+A comment earns its place when it records something the code cannot say for itself:
 
-| Banned | Use instead |
-|---|---|
-| Curly quotes `' ' " "` | straight ASCII `'` and `"` |
-| First person: `I`, `we`, `my`, `our`, `us` | passive or imperative: "the handler reads", "prune the ledger" |
-| Dated notes: `CONFIRMED PASS 2026-08-16`, `BISECT`, `REMOVED 2026-...` | state the current fact; history belongs in git |
-| `deliberately`, `genuinely`, `notably`, `crucially`, `importantly` | delete the adverb, or say the thing plainly |
-| `Note that`, `It is worth noting`, `Worth flagging` | delete the preamble and state the point |
-| `observed in play`, `measured in play`, `turned out to be` | state the fact: "the handler does not consult it" |
+- an ordering requirement, or a reason a call has to happen where it does
+- a failure mode, especially a silent one
+- why the obvious simpler approach was not taken
+- a constraint imposed by the game rather than by this mod
 
-**ASCII only** in source files. Straight quotes, `->` rather than an arrow character, no
-box-drawing, no emoji, and no accented characters unless part of a real identifier.
+File headers state what the module owns and what it must not do. Function comments are warranted
+where the function carries a constraint, not as a matter of routine.
 
-**Spelling: US English** throughout, matching the game and the wider mod ecosystem
-(`behavior`, `color`, `initialize`, `analyze`).
+## Citing game internals
 
-## Comment density
+Anything asserted about the base game carries a `file.script:line` reference into the decompiled
+scripts, so the claim can be checked rather than trusted. Statements that could not be verified
+that way are marked `UNVERIFIED` at the exact line they affect, with a note on what would confirm
+them and what breaks if they are wrong.
 
-Comment the non-obvious. Do not comment the obvious.
+This matters more here than in most projects. A TweakDBID literal that names no record still
+compiles, and the game still loads. Wrong assumptions do not announce themselves.
 
-- A file header states what the module owns and what it must not do.
-- A function comment is warranted when the function has a constraint, an ordering requirement,
-  a failure mode, or a reason it is not written the simpler way.
-- A line comment is warranted when a line would look wrong to a competent reader.
-- Every reference to game internals cites `file.script:line` so the claim can be checked.
-- No comment restates its own code. `// increment the counter` above `i += 1` is noise.
+## Formatting
 
-Target: a reader who knows redscript but not this mod should be able to modify any file safely
-after reading its header and the comments in the function they are changing.
+- ASCII only in source. Use `->` rather than an arrow character, and straight quotes.
+- US English, matching the game and the wider mod ecosystem: `behavior`, `color`, `initialize`.
+- Two-space indentation in redscript, matching the decompiled sources.
+- Keep lines under roughly 95 characters.
 
-## Log output
+## Naming
 
-Player-visible logs are `KSTPLog.Info`. Diagnostics are `KSTPLog.Debug` behind
-`KSTP_DebugLoggingEnabled()`. A shipped build must not log per-frame or per-entity at Info level.
-Messages are lowercase, factual, and contain the numbers a bug report needs.
+Everything with global reach carries the `KSTP` prefix: classes as `KSTPFoo`, free functions as
+`KSTP_Foo`. A redscript mod shares one namespace with every other mod the player has installed,
+and a collision is their problem rather than ours.
 
-## Markdown docs
+Check for an existing method of the same name before adding one to a class. Two methods sharing a
+name on one class compile without complaint and then fail at registration, before the main menu,
+with nothing in the log.
 
-Same prose rules. Additionally:
+## Logging
 
-- A doc that exists to record a decision states the decision and the evidence, not the process.
-- No "we found", "it turned out", "after investigation".
-- Tables over prose for anything with more than three parallel facts.
-- Code fences carry a language tag.
+`KSTPLog.Info` is for events a player might reasonably see: startup, teardown, a protocol change.
+Everything else is `KSTPLog.Debug`, which is off unless verbose logging is switched on in the
+settings.
+
+Nothing logs per frame or per entity at Info. Build interpolated strings only after checking
+`KSTPLog.DebugEnabled()`, so the string is never assembled when tracing is off.
+
+Messages are lowercase, factual, and carry the numbers a bug report needs.
+
+## Documentation
+
+Tables beat prose wherever more than about three parallel facts are involved. Code fences carry a
+language tag. A document recording a decision states the decision and the evidence for it; the
+route taken to reach it belongs in the commit history.

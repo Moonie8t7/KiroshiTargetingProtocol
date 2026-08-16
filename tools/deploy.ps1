@@ -101,7 +101,7 @@ $DryRun = [bool]$WhatIfPreference
 # it alone. Deploying to the wrong copy of the game reports success and then changes
 # nothing in the copy that actually launches, so the resolved path is printed on every
 # run alongside where it came from.
-$DefaultGamePath = 'D:\GOG Galaxy\Games\Cyberpunk 2077'
+$DefaultGamePath = 'C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077'
 $ProjectRoot     = Split-Path -Parent $PSScriptRoot
 $ManifestDir     = Join-Path $PSScriptRoot '.deploy-manifests'
 

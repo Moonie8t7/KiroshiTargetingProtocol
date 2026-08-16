@@ -3,7 +3,7 @@
 Reference for anyone modifying or extending smart-gun behavior from redscript.
 
 Every claim below cites `file:line` against the decompiled 2.31 script dump at
-`C:\tmp\cp2077-research\scripts`, and every cited line has been opened and read. Where the dump
+`<decompiled-scripts>`, and every cited line has been opened and read. Where the dump
 cannot settle a question, the text says so.
 
 The behavioral results that back the stat sections are in `experiments.md`. Raw capture from the
@@ -408,7 +408,7 @@ a modifier to a stat, so a cached netrunner classification can go stale.
 
 ## 8. Citation index
 
-All paths relative to `C:\tmp\cp2077-research\scripts`.
+All paths relative to `<decompiled-scripts>`.
 
 | What | Where |
 |---|---|

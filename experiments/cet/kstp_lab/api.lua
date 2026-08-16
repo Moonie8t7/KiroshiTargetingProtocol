@@ -5,7 +5,7 @@
 -- UI instead of killing the mod.
 --
 -- Every game symbol used is cited to the decompiled 2.31 dump at
--- C:\tmp\cp2077-research\scripts. If a citation is absent the line is marked UNVERIFIED.
+-- <decompiled-scripts>. If a citation is absent the line is marked UNVERIFIED.
 --
 -- CET-side conventions used here (CET >= 1.18):
 --   Game.Get<X>System()            -- GameInstance statics with the instance auto-filled

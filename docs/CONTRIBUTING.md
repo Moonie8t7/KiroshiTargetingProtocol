@@ -18,7 +18,7 @@ Read these first:
 - Cyberpunk 2077 build **2.31**, with RED4ext, redscript and TweakXL installed.
 - Mod Settings, for the configuration surface.
 - Cyber Engine Tweaks, for the experiment lab.
-- The decompiled 2.31 game scripts at `C:\tmp\cp2077-research\scripts`.
+- The decompiled 2.31 game scripts at `<decompiled-scripts>`.
 
 Every game API a change references must exist in that dump. If the symbol is not there, it
 does not exist, and guessing a name produces either a compile error or a silent no-op.
@@ -87,7 +87,7 @@ bundle and reports the same errors the in-game compiler would:
 ```powershell
 redscript-cli compile `
   -s .\src\r6\scripts `
-  -b 'D:\GOG Galaxy\Games\Cyberpunk 2077\r6\cache\final.redscripts' `
+  -b 'C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\r6\cache\final.redscripts' `
   -o "$env:TEMP\kstp-check.redscripts"
 ```
 

@@ -61,7 +61,7 @@ $KSTPVersion = '1.0.0'
 # tools read it. A machine with more than one copy of the game installed needs the
 # override; checking the wrong copy reports a clean environment for an install that is
 # never launched.
-$DefaultGamePath = 'D:\GOG Galaxy\Games\Cyberpunk 2077'
+$DefaultGamePath = 'C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077'
 $ProjectRoot     = Split-Path -Parent $PSScriptRoot
 
 function Write-Head([string] $Text) {
