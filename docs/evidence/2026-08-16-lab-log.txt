@@ -1,0 +1,149 @@
+[10:44:01] --- KSTP Lab session start ---
+[10:44:01] CET version: v1.37.1
+[10:44:01] E-FILTER observers installed: nil
+[10:44:01] KSTP Lab ready. Open section 1 and equip a smart weapon.
+[10:52:57] TEARDOWN: 0 modifier(s) removed (0 failed), 0 ignore entr(ies) cleared
+[10:52:57] --- KSTP Lab session end ---
+[10:57:05] --- KSTP Lab session start ---
+[10:57:05] CET version: v1.37.1
+[10:57:05] E-FILTER observers installed: nil
+[10:57:05] KSTP Lab ready. Open section 1 and equip a smart weapon.
+[11:13:34] classification cache flushed
+[11:25:29] pinned NC Resident (9009845ULL)
+[11:25:30] pinned NC Resident (9009845ULL)
+[11:25:47] pinned NC Resident (9009845ULL)
+[11:27:43] pinned NC Resident (9009845ULL)
+[11:27:47] pinned NC Resident (9009845ULL)
+[11:27:49] pin failed: no look-at object (nothing under the crosshair)
+[11:27:54] pinned NC Resident (9009845ULL)
+[11:28:08] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=1.0000 after=1000.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:08] E-STAT: modifier landed
+[11:28:09] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=1000.0000 after=1000000.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:09] E-STAT: modifier landed
+[11:28:09] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=1000000.0000 after=1000000000.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:09] E-STAT: modifier landed
+[11:28:09] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=1000000000.0000 after=999999995904.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:09] E-STAT: modifier landed
+[11:28:10] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999995904.0000 after=999999986991104.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:10] E-STAT: modifier landed
+[11:28:10] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999986991104.0000 after=999999984306749440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:10] E-STAT: modifier landed
+[11:28:11] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999984306749440.0000 after=999999949672133165056.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:11] E-STAT: modifier landed
+[11:28:12] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999949672133165056.0000 after=999999941790833817157632.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:12] E-STAT: modifier landed
+[11:28:12] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999941790833817157632.0000 after=999999914697178458896728064.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:12] E-STAT: modifier landed
+[11:28:13] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999914697178458896728064.0000 after=999999939489602493962365435904.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:13] E-STAT: modifier landed
+[11:28:13] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999939489602493962365435904.0000 after=999999917124474831091725703839744.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:13] E-STAT: modifier landed
+[11:28:14] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999917124474831091725703839744.0000 after=999999882462153731101078006664265728.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:14] E-STAT: modifier landed
+[11:28:14] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=999999882462153731101078006664265728.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:14] E-STAT: modifier landed
+[11:28:14] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:14] E-STAT: modifier applied but the stat value did not change
+[11:28:14] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:14] E-STAT: modifier applied but the stat value did not change
+[11:28:14] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:14] E-STAT: modifier applied but the stat value did not change
+[11:28:15] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:15] E-STAT: modifier applied but the stat value did not change
+[11:28:15] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:15] E-STAT: modifier applied but the stat value did not change
+[11:28:15] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:15] E-STAT: modifier applied but the stat value did not change
+[11:28:15] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:15] E-STAT: modifier applied but the stat value did not change
+[11:28:16] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:16] E-STAT: modifier applied but the stat value did not change
+[11:28:16] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:16] E-STAT: modifier applied but the stat value did not change
+[11:28:16] E-STAT apply NC Resident SmartGunTimeToLockChestComponentMultiplier Multiplier 1000.00 | before=340282346638528859811704183484516925440.0000 after=340282346638528859811704183484516925440.0000 (built via NewObject(gameConstantStatModifierData))
+[11:28:16] E-STAT: modifier applied but the stat value did not change
+[11:28:29] E-STAT cleared 23 modifier(s), 0 failure(s)
+[11:28:29] E-STAT: removed 23 modifier(s)
+[11:28:49] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=4.000 after=0.000
+[11:28:49] E-TRACK SmartGunTrackChestComponents on itemData Multiplier 0.00 | before=3.000 after=0.000
+[11:28:49] E-TRACK: head + chest zeroed on itemData
+[11:28:54] E-TRACK cleared 2 modifier(s), 0 failure(s)
+[11:28:54] E-TRACK: removed 2 modifier(s)
+[11:28:58] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=4.000 after=0.000
+[11:28:58] E-TRACK SmartGunTrackChestComponents on itemData Multiplier 0.00 | before=3.000 after=0.000
+[11:28:58] E-TRACK: head + chest zeroed on itemData
+[11:41:42] pinned NC Resident (9009845ULL)
+[11:41:44] pinned LocKey#74 (7012435298907122823ULL)
+[11:41:44] pinned LocKey#74 (7012435298907122823ULL)
+[11:41:45] pinned NC Resident (9009845ULL)
+[11:41:46] pinned NC Resident (9009845ULL)
+[11:41:47] pinned NC Resident (9009845ULL)
+[11:41:47] pinned NC Resident (9009845ULL)
+[11:41:48] pinned NC Resident (9009845ULL)
+[11:41:48] pinned NC Resident (9009845ULL)
+[11:41:49] pinned NC Resident (9009845ULL)
+[11:41:53] pinned NC Resident (9009845ULL)
+[11:43:33] E-TRACK hotkey: no weapon stats object
+[11:47:03] pin failed: no look-at object (nothing under the crosshair)
+[11:47:04] pinned NC Resident (9009845ULL)
+[11:48:43] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=4.000 after=0.000
+[11:48:43] E-TRACK Head: applied
+[11:48:46] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[11:48:46] E-TRACK Head: applied
+[11:48:50] E-TRACK cleared 4 modifier(s), 0 failure(s)
+[11:48:50] E-TRACK: removed 4 modifier(s)
+[11:48:50] E-TRACK cleared 0 modifier(s), 0 failure(s)
+[11:48:50] E-TRACK: removed 0 modifier(s)
+[11:54:51] --- KSTP Lab session start ---
+[11:54:51] CET version: v1.37.1
+[11:54:51] E-FILTER observers installed: nil
+[11:54:51] KSTP Lab ready. Open section 1 and equip a smart weapon.
+[12:03:32] pinned NC Resident (9009843ULL)
+[12:08:13] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=4.000 after=0.000
+[12:08:13] E-TRACK Head: applied
+[12:09:10] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:09:10] E-TRACK Head: applied
+[12:09:11] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:09:11] E-TRACK Head: applied
+[12:18:04] E-TRACK cleared 3 modifier(s), 0 failure(s)
+[12:18:04] E-TRACK: removed 3 modifier(s)
+[12:18:07] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=4.000 after=0.000
+[12:18:07] E-TRACK SmartGunTrackChestComponents on itemData Multiplier 0.00 | before=3.000 after=0.000
+[12:18:07] E-TRACK: head + chest zeroed on itemData
+[12:18:10] E-STAT cleared 0 modifier(s), 0 failure(s)
+[12:18:10] E-STAT: removed 0 modifier(s)
+[12:18:12] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1.0000 after=1000.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:12] E-STAT: modifier landed
+[12:18:17] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1000.0000 after=1000000.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:17] E-STAT: modifier landed
+[12:18:17] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1000000.0000 after=1000000000.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:17] E-STAT: modifier landed
+[12:18:17] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1000000000.0000 after=999999995904.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:17] E-STAT: modifier landed
+[12:18:18] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=999999995904.0000 after=999999986991104.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:18] E-STAT: modifier landed
+[12:18:18] E-STAT cleared 5 modifier(s), 0 failure(s)
+[12:18:18] E-STAT: removed 5 modifier(s)
+[12:18:21] E-STAT cleared 0 modifier(s), 0 failure(s)
+[12:18:21] E-STAT: removed 0 modifier(s)
+[12:18:23] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:18:23] E-TRACK SmartGunTrackChestComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:18:23] E-TRACK: head + chest zeroed on itemData
+[12:18:26] E-STAT cleared 0 modifier(s), 0 failure(s)
+[12:18:26] E-STAT: removed 0 modifier(s)
+[12:18:28] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1.0000 after=1000.0000 (built via NewObject(gameConstantStatModifierData))
+[12:18:28] E-STAT: modifier landed
+[12:18:29] E-STAT cleared 1 modifier(s), 0 failure(s)
+[12:18:29] E-STAT: removed 1 modifier(s)
+[12:18:32] E-TRACK SmartGunTrackHeadComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:18:32] E-TRACK SmartGunTrackChestComponents on itemData Multiplier 0.00 | before=0.000 after=0.000
+[12:18:32] E-TRACK: head + chest zeroed on itemData
+[12:18:35] E-TRACK cleared 6 modifier(s), 0 failure(s)
+[12:18:35] E-TRACK: removed 6 modifier(s)
+[12:20:55] E-STAT apply NC Resident SmartGunTimeToLockHeadComponentMultiplier Multiplier 1000.00 | before=1.0000 after=1000.0000 (built via NewObject(gameConstantStatModifierData))
+[12:20:55] E-STAT: modifier landed
+[12:24:42] Report written to mods/kstp_lab/kstp_lab_report.txt
+[12:24:42] report written to mods/kstp_lab/kstp_lab_report.txt
+[12:29:25] RemoveModifier FAILED on NC Resident/SmartGunTimeToLockHeadComponentMultiplier: nil
+[12:29:25] TEARDOWN: 0 modifier(s) removed (1 failed), 0 ignore entr(ies) cleared
+[12:29:25] --- KSTP Lab session end ---
