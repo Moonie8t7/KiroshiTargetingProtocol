@@ -1,0 +1,3 @@
+docs/evidence/
+tools/.deploy-manifests/
+*.disabled
