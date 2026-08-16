@@ -1,0 +1,222 @@
+# Kiroshi Smart Targeting Protocol: stat and modifier records
+#
+# Scope: the five per-tier stat groups the coprocessor applies on equip, applied natively
+# by the ApplyStatGroupEffector declared in cyberware.yaml. Nothing else in the mod is
+# driven from TweakDB.
+#
+# The enforcement modules do not use the modifier-group API. Enforcement/BodyPart.reds
+# and Enforcement/Faction.reds build their modifiers at runtime with
+# RPGManager.CreateStatModifier and hand them to StatsSystem.AddModifier /
+# RemoveModifier (orphans.script:16943 / :16949), because the values depend on the live
+# protocol and, for BodyPart, on the live base value of the stat being suppressed. A
+# TweakDB ConstantStatModifier record holds one value fixed at author time and cannot
+# express that, so no per-policy group record belongs in this file.
+#
+# What TweakDB owns is the group the effector points at: ApplyStatGroupEffector requires
+# a gamedataStatModifierGroup_Record for its `statGroup` field. The vanilla precedent
+# works the same way, with Items.KiroshiOpticsFragment1 unlocking
+# SmartGunTrackLegComponents on the held weapon
+# (core/gameplay/effectors/applyStatGroupEffector.script:38-101).
+#
+# ---------------------------------------------------------------------------
+# The tier ladder
+#
+# The implant ships as eleven quality records in cyberware.yaml. Each points its
+# effector at one of the five groups below, and Core/Policy.reds maps those eleven record
+# names onto tiers 1 to 5 (KSTP_CyberwareTierOf).
+#
+#   group  tier  classes unlocked  lock time on those classes
+#   T1     1     head              vanilla
+#   T2     2     + weak spot       vanilla
+#   T3     3     + breach          vanilla
+#   T4     4     + vehicle         vanilla
+#   T5     5     all four          reduced
+#
+# Each group is cumulative and self-contained: T3 grants head, weak spot and breach, not
+# breach alone. A group is applied on its own, never alongside its predecessors, because
+# two coprocessors cannot be equipped at once (they share a cyberwareType).
+#
+# The faction and threat axis also becomes enforceable at tier 3. That is behavior rather
+# than a stat, so it is gated in script (KSTP_FactionAxisMinTier) and appears nowhere in
+# this file.
+#
+# Vanilla stat records referenced here:
+#   BaseStats.SmartGunTrack*Components                orphans.script:2784-2791
+#   BaseStats.SmartGunTimeToLock*ComponentMultiplier  orphans.script:2775-2781
+
+# ---------------------------------------------------------------------------
+# Authoring form
+#
+# Every record below is written out literally rather than generated with TweakXL's
+# $instances / $(cls) templating. The names are load-bearing across a boundary TweakXL
+# cannot check: cyberware.yaml names these groups and Core/Policy.reds pins the item
+# records by hash, so a name that does not expand as intended produces a record called
+# literally "KSTP.Mod_TrackOn_$(cls)", leaves the reference dangling, resolves the group
+# empty, and unlocks nothing with no error anywhere. Written out, every name can be
+# checked by eye against its referent.
+#
+# For the same reason the groups repeat their members instead of chaining through
+# relatedModifierGroups. Whether StatsSystem.DefineModifierGroupFromRecord walks related
+# groups is native (applyStatGroupEffector.script:88) and not answerable from the script
+# dump, and a group that resolves to fewer modifiers than it reads as granting fails
+# silently in the same way. relatedModifierGroups stays empty on all five.
+
+# ---------------------------------------------------------------------------
+# Leaf modifiers: class unlocks
+#
+# Vanilla smart weapons track Chest 3, Leg 2 and Mechanical 1, and ship 0 for the other
+# four classes. These modifiers bring those four online so the protocol has all seven
+# classes to arbitrate over, matching the vanilla precedent where
+# Items.KiroshiOpticsFragment1 unlocked one class (Leg) on the held weapon. Chest, Leg
+# and Mechanical are never touched, so AUTO stays vanilla behavior plus whichever new
+# classes the installed tier has unlocked.
+#
+# Additive 2 over a base of 0 is what the handler reads as tracked; the value is a
+# component budget rather than a flag, and 2 sits between vanilla Leg and Mechanical.
+# It is flat across the ladder: the tier decides which classes are unlocked, not how
+# heavily each one is weighted.
+# ---------------------------------------------------------------------------
+
+KSTP.Mod_TrackOn_Head:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Additive
+  value: 2
+  statType: BaseStats.SmartGunTrackHeadComponents
+
+KSTP.Mod_TrackOn_WeakSpot:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Additive
+  value: 2
+  statType: BaseStats.SmartGunTrackWeakSpotComponents
+
+KSTP.Mod_TrackOn_Breach:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Additive
+  value: 2
+  statType: BaseStats.SmartGunTrackBreachComponents
+
+KSTP.Mod_TrackOn_Vehicle:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Additive
+  value: 2
+  statType: BaseStats.SmartGunTrackVehicleComponents
+
+# ---------------------------------------------------------------------------
+# Leaf modifiers: tier 5 lock speed
+#
+# SmartGunTimeToLock<Class>ComponentMultiplier scales how long a component of that class
+# takes to lock. Base is 1.0 and larger is slower: Enforcement/Faction.reds denies a
+# target by pushing the same stats to 1000 on that NPC. A multiplier below 1.0 therefore
+# acquires faster.
+#
+# 0.85 means the four classes this implant unlocks lock roughly 15 percent sooner than a
+# vanilla class does. It is the only numeric that moves across the ladder, so it carries
+# the tier-5 payoff on its own: the top tier is not "more classes" (tier 4 already has
+# all four) but the same classes acquired quicker.
+#
+# Applied to the held weapon's stats object, the same object the class unlocks above go
+# to. Faction suppression writes to the target NPC's stats object instead, so the two
+# never combine. Enforcement/BodyPart.reds under PREFERRED does write this stat on the
+# weapon for classes the active protocol denies; a denied class there ends up at 0.85
+# times its inflated value, which leaves it just as unreachable as before.
+# ---------------------------------------------------------------------------
+
+KSTP.Mod_FastLock_Head:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Multiplier
+  value: 0.85
+  statType: BaseStats.SmartGunTimeToLockHeadComponentMultiplier
+
+KSTP.Mod_FastLock_WeakSpot:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Multiplier
+  value: 0.85
+  statType: BaseStats.SmartGunTimeToLockWeakSpotComponentMultiplier
+
+KSTP.Mod_FastLock_Breach:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Multiplier
+  value: 0.85
+  statType: BaseStats.SmartGunTimeToLockBreachComponentMultiplier
+
+KSTP.Mod_FastLock_Vehicle:
+  $type: gamedataConstantStatModifier_Record
+  modifierType: Multiplier
+  value: 0.85
+  statType: BaseStats.SmartGunTimeToLockVehicleComponentMultiplier
+
+# ---------------------------------------------------------------------------
+# Per-tier groups
+#
+# The only records in this file with a referent: cyberware.yaml points each quality
+# record's ApplyStatGroupEffector `statGroup` at one of these five. Renaming one means
+# editing cyberware.yaml in the same pass, because a `statGroup` pointing at a record
+# that does not exist applies nothing and reports nothing.
+#
+# Every effector carries removeWithEffector: True, so unequipping the implant tears the
+# group back down natively. That satisfies hard rule 4 (restore what you mutate) on this
+# path with no bookkeeping in script.
+# ---------------------------------------------------------------------------
+
+KSTP.Grp_Coprocessor_T1:
+  $type: gamedataStatModifierGroup_Record
+  drawBasedOnStatType: False
+  optimiseCombinedModifiers: False
+  saveBasedOnStatType: False
+  statModsLimit: -1
+  relatedModifierGroups: []
+  statModifiers:
+    - KSTP.Mod_TrackOn_Head
+
+KSTP.Grp_Coprocessor_T2:
+  $type: gamedataStatModifierGroup_Record
+  drawBasedOnStatType: False
+  optimiseCombinedModifiers: False
+  saveBasedOnStatType: False
+  statModsLimit: -1
+  relatedModifierGroups: []
+  statModifiers:
+    - KSTP.Mod_TrackOn_Head
+    - KSTP.Mod_TrackOn_WeakSpot
+
+KSTP.Grp_Coprocessor_T3:
+  $type: gamedataStatModifierGroup_Record
+  drawBasedOnStatType: False
+  optimiseCombinedModifiers: False
+  saveBasedOnStatType: False
+  statModsLimit: -1
+  relatedModifierGroups: []
+  statModifiers:
+    - KSTP.Mod_TrackOn_Head
+    - KSTP.Mod_TrackOn_WeakSpot
+    - KSTP.Mod_TrackOn_Breach
+
+KSTP.Grp_Coprocessor_T4:
+  $type: gamedataStatModifierGroup_Record
+  drawBasedOnStatType: False
+  optimiseCombinedModifiers: False
+  saveBasedOnStatType: False
+  statModsLimit: -1
+  relatedModifierGroups: []
+  statModifiers:
+    - KSTP.Mod_TrackOn_Head
+    - KSTP.Mod_TrackOn_WeakSpot
+    - KSTP.Mod_TrackOn_Breach
+    - KSTP.Mod_TrackOn_Vehicle
+
+KSTP.Grp_Coprocessor_T5:
+  $type: gamedataStatModifierGroup_Record
+  drawBasedOnStatType: False
+  optimiseCombinedModifiers: False
+  saveBasedOnStatType: False
+  statModsLimit: -1
+  relatedModifierGroups: []
+  statModifiers:
+    - KSTP.Mod_TrackOn_Head
+    - KSTP.Mod_TrackOn_WeakSpot
+    - KSTP.Mod_TrackOn_Breach
+    - KSTP.Mod_TrackOn_Vehicle
+    - KSTP.Mod_FastLock_Head
+    - KSTP.Mod_FastLock_WeakSpot
+    - KSTP.Mod_FastLock_Breach
+    - KSTP.Mod_FastLock_Vehicle

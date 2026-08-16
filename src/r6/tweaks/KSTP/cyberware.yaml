@@ -1,0 +1,429 @@
+# Kiroshi Smart Targeting Protocol: cyberware records
+#
+# Defines "Kiroshi IFF Targeting Coprocessor", a frontal-cortex implant that unlocks the
+# smart-gun component classes vanilla weapons ignore. It is also the gate for everything
+# the redscript side does (KSTPPolicySystem.IsArmed()).
+#
+# The implant ships as eleven quality tiers, matching the vanilla cyberware ladder from
+# tier 1 to tier 5++. A single-quality implant is unreachable through normal play: it
+# never rotates into ripperdoc stock as the player levels, and it offers no upgrade for
+# the ripperdoc upgrade panel to sell.
+#
+# What each tier unlocks is data, carried by the stat group that the tier's gameplay
+# logic package points at (stats.yaml, KSTP.Grp_Coprocessor_T1 through T5):
+#
+#   tier 1   head tracking
+#   tier 2   + weak spot
+#   tier 3   + breach, and the faction and threat axis becomes enforceable
+#   tier 4   + vehicle
+#   tier 5   all classes, and permitted classes lock faster
+#
+# A plus grade shares its base tier's stat group. Quality.RarePlus is a price and display
+# step, not another set of unlocks, which is how the vanilla ladder behaves.
+#
+# Tier 3 is the one threshold script also reads: KSTP_FactionAxisMinTier() returns 3
+# (Core/Policy.reds:81), so the faction axis is behavior rather than a stat and cannot be
+# expressed in a stat group.
+#
+# Vanilla precedent: Items.KiroshiOpticsFragment1 is cyberware that pushes
+# SmartGunTrackLegComponentsModifier onto the held weapon through an
+# ApplyStatGroupEffector with applicationTarget: Weapon, gated by
+# Prereqs.SmartWeaponHeldPrereq. The same mechanism is reproduced here with four
+# component classes instead of one, released across the ladder.
+#
+# Mechanism, traced through the 2.31 dump:
+#   Item_Record.OnEquip -> GameplayLogicPackage_Record.effectors
+#     -> gamedataApplyStatGroupEffector_Record (orphans.script:48890)
+#     -> ApplyStatGroupEffector.Initialize / ApplyModifierGroup
+#        (core/gameplay/effectors/applyStatGroupEffector.script:38-91)
+#     -> applicationTarget "Weapon" resolves to
+#        ScriptedPuppet.GetActiveWeapon(owner).GetItemData().GetStatsObjectID()
+#        (core/gameplay/effector.script:31-38)
+#
+# The fragment's behavior is reproduced, its record is not. Items.KiroshiOpticsFragment1
+# is an ItemType.Prt_Fragment, and 2.0 removed the optics fragment slots that made
+# fragments equippable (craftingSystem.script:1836-1840 hides all five recipes), so a
+# $base clone of it yields an item with nowhere to go. Frontal cortex is a live 2.x slot
+# with three openings, so the implant evicts nothing the player already runs.
+#
+# ---------------------------------------------------------------------------
+# Record names
+# ---------------------------------------------------------------------------
+#
+# The eleven TweakDBIDs the redscript side matches on, and the tier each maps to:
+#
+#   Items.KSTPKiroshiIFFCoprocessorCommon              tier 1
+#   Items.KSTPKiroshiIFFCoprocessorCommonPlus          tier 1+
+#   Items.KSTPKiroshiIFFCoprocessorUncommon            tier 2
+#   Items.KSTPKiroshiIFFCoprocessorUncommonPlus        tier 2+
+#   Items.KSTPKiroshiIFFCoprocessorRare                tier 3
+#   Items.KSTPKiroshiIFFCoprocessorRarePlus            tier 3+
+#   Items.KSTPKiroshiIFFCoprocessorEpic                tier 4
+#   Items.KSTPKiroshiIFFCoprocessorEpicPlus            tier 4+
+#   Items.KSTPKiroshiIFFCoprocessorLegendary           tier 5
+#   Items.KSTPKiroshiIFFCoprocessorLegendaryPlus       tier 5+
+#   Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus   tier 5++
+#
+# Core/Policy.reds pins all eleven literals in KSTP_CyberwareTierOf() (Policy.reds:50-76)
+# and they appear nowhere else in script. A TweakDBID literal is a compile-time hash and
+# does not require the record to exist, so a name that differs by one character produces
+# no diagnostic of any kind: KSTP_CyberwareTier() returns 0 for that tier, IsArmed() stays
+# false, and the implant does nothing for whoever is wearing it. Renaming a record here
+# means editing the matching line there.
+#
+# The records are generated from one template with TweakXL's $instances, the form
+# ChipwareExpansion uses for its own eleven-tier frontal cortex processors
+# (zz_zetatech_neuralProcessor.yaml:10-23). Substitution runs in record names as well as
+# in field values, and an integer variable substitutes into a name the same way a string
+# does (zz_zetatech_neuralProcessor.yaml:90). $instances is not restricted to item records
+# or to $base clones: a shipping mod builds bare gamedataGameplayLogicPackage_Record
+# entries from $type under $instances the same way
+# (scorpiontank/#_scorpion_zenitex_core_dependency.yaml:1848-1874).
+#
+# Console grant for testing (CET). Any of the eleven suffixes above works:
+#   Game.AddToInventory("Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus", 1)
+#
+# ---------------------------------------------------------------------------
+# Display strings
+# ---------------------------------------------------------------------------
+#
+# KSTP ships no .archive and has no WolvenKit pack step, so a custom LocKey has nowhere
+# to resolve from. Every display string here is therefore a plain quoted scalar rather
+# than TweakXL's l"..." LocKey literal. A scalar is stored as a CName and read back
+# through GetLocalizedItemNameByCName(itemRecord.DisplayName()) (accessor returns CName,
+# orphans.script:15249), which falls back to the literal text when no localization entry
+# matches. The l"..." form instead hashes the key, and with no archive behind it the UI
+# prints the hash, for example "LocKey#11912325938766414805". See docs/research/smart-gun-internals.md
+# section 9.
+#
+# Consequence: these strings are English-only in every locale. That is the cost of not
+# shipping an .archive.
+
+# ---------------------------------------------------------------------------
+# The gameplay logic package attached on equip
+#
+# One package per base tier, because `statGroup` is a field of the effector inside the
+# package rather than a field of the item. Tier 1+ and tier 1 both equip
+# KSTP.PkgTargetingProtocol_T1, so the eleven items resolve to five packages.
+# ---------------------------------------------------------------------------
+
+KSTP.PkgTargetingProtocol_UI:
+  $type: gamedataGameplayLogicPackageUIData_Record
+  iconPath: ''
+  # Plain quoted scalars, not TweakXL's l"..." LocKey literal. See the display-string
+  # note in the file header.
+  #
+  # Shared by all five packages, and worded so that it stays true at every tier. The card
+  # renders this above an effect list generated from the tier's own stat modifiers, so the
+  # per-tier class unlocks are already stated there.
+  localizedName: "Smart Targeting Protocol"
+  localizedDescription: "Arbitrates smart-weapon component locks by target class and threat profile."
+  floatValues: []
+  intValues: []
+  nameValues: []
+  stats: []
+
+KSTP.PkgTargetingProtocol_T$(tier):
+  $instances:
+    - { tier: 1 }
+    - { tier: 2 }
+    - { tier: 3 }
+    - { tier: 4 }
+    - { tier: 5 }
+  $type: gamedataGameplayLogicPackage_Record
+  stackable: False
+  UIData: KSTP.PkgTargetingProtocol_UI
+  animationWrapperOverrides: []
+  items: []
+  statPools: []
+  stats: []
+  effectors:
+    - $type: gamedataApplyStatGroupEffector_Record
+      effectorClassName: ApplyStatGroupEffector
+      applicationTarget: Weapon
+      # Same prereq the vanilla optics fragment uses. Keeps the group off non-smart
+      # weapons entirely. Prereq records are TweakDB-only data with no script
+      # reference; this one sits in the vanilla prereq roster alongside
+      # AnyWeaponHeldPrereq, RangedWeaponHeldPrereq, TechWeaponHeldPrereq and
+      # PowerWeaponHeldPrereq (redmodding wiki, "Cheat Sheet: Prereqs"), and the
+      # sibling AnyWeaponHeldPrereq is used verbatim by a shipping mod
+      # (wannabeEdgerunner.yaml:86).
+      prereqRecord: Prereqs.SmartWeaponHeldPrereq
+      # Hard rule 4 (restore what you mutate): unequipping the implant removes the
+      # group natively, with no bookkeeping in script. This also covers the upgrade
+      # path, where the ripperdoc unequips one tier and equips the next.
+      removeWithEffector: True
+      # False binds the group to whatever weapon was active at equip time and never
+      # follows a weapon swap. True registers an AttachmentSlots listener on
+      # WeaponRight and re-applies per equip / removes per unequip; the effector's own
+      # stack counter keeps those balanced (applyStatGroupEffector.script:73-104).
+      reapplyOnWeaponChange: True
+      removeAfterActionCall: False
+      removeAfterPrereqCheck: False
+      statModifierGroups: []
+      # The only field that varies across the five packages. Authored in stats.yaml.
+      statGroup: KSTP.Grp_Coprocessor_T$(tier)
+
+# ---------------------------------------------------------------------------
+# The item
+#
+# Written out as a full gamedataItem_Record rather than $base-cloned from a vanilla
+# cyberware record: no frontal-cortex item ID is confirmable against the 2.31 dump, and
+# a $base pointing at a record that does not exist fails silently.
+#
+# Template variables:
+#   quality   the quality suffix. It builds the record name and the Quality.* value, so
+#             the eleven names and the eleven quality steps cannot drift apart.
+#   next      nextUpgradeItem, the record the ripperdoc upgrade panel sells next. The
+#             chain is what walks the player up the ladder; the last tier chains to None.
+#   tier      base tier 1 to 5, selecting the gameplay logic package and through it the
+#             stat group. A plus grade repeats its base tier's number.
+# ---------------------------------------------------------------------------
+
+Items.KSTPKiroshiIFFCoprocessor$(quality):
+  $instances:
+    - { quality: Common,            next: Items.KSTPKiroshiIFFCoprocessorCommonPlus,      tier: 1 }
+    - { quality: CommonPlus,        next: Items.KSTPKiroshiIFFCoprocessorUncommon,        tier: 1 }
+    - { quality: Uncommon,          next: Items.KSTPKiroshiIFFCoprocessorUncommonPlus,    tier: 2 }
+    - { quality: UncommonPlus,      next: Items.KSTPKiroshiIFFCoprocessorRare,            tier: 2 }
+    - { quality: Rare,              next: Items.KSTPKiroshiIFFCoprocessorRarePlus,        tier: 3 }
+    - { quality: RarePlus,          next: Items.KSTPKiroshiIFFCoprocessorEpic,            tier: 3 }
+    - { quality: Epic,              next: Items.KSTPKiroshiIFFCoprocessorEpicPlus,        tier: 4 }
+    - { quality: EpicPlus,          next: Items.KSTPKiroshiIFFCoprocessorLegendary,       tier: 4 }
+    - { quality: Legendary,         next: Items.KSTPKiroshiIFFCoprocessorLegendaryPlus,   tier: 5 }
+    - { quality: LegendaryPlus,     next: Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus, tier: 5 }
+    - { quality: LegendaryPlusPlus, next: None,                                           tier: 5 }
+  $type: gamedataItem_Record
+
+  # Naming and register.
+  #
+  # Kiroshi branding on a frontal cortex implant is in-universe. The Kiroshi Group is two
+  # companies, Kiroshi Optics and Kiroshi General Cybernetics, and the product line already
+  # covers the optical HUD, the Optishield and SmartFrames. A coprocessor that arbitrates
+  # the smart link sits with the cybernetics arm rather than the optics arm.
+  #
+  # One name across all eleven tiers, matching the vanilla ladder: every quality step of
+  # the Bioconductor is called "Bioconductor". The quality tier is drawn by the UI from
+  # the `quality` field below, so a tier suffix in the name would print twice.
+  #
+  # localizedDescription carries flavor, not numbers. A vanilla cyberware card shows the
+  # description above a separately generated effect list built from the item's stat
+  # modifiers, so a description written as mechanics duplicates the panel below it.
+  # Register to match, one sentence, third person, in-world:
+  #   Mechatronic Core  "Provides information about the weak points of both mass-produced
+  #                      and some lesser-known machines."
+  #   Camillo RAM Manager  "A mod that manages and optimizes RAM use between your brain and
+  #                         your cyberdeck."
+  displayName: "Kiroshi IFF Targeting Coprocessor"
+  localizedDescription: "Cross-references smart-link targeting data against an operator-set engagement profile before authorizing a lock."
+  localizedName: "Kiroshi IFF Targeting Coprocessor"
+  friendlyName: ''
+
+  equipArea: EquipmentArea.FrontalCortexCW
+  itemCategory: ItemCategory.Cyberware
+  itemType: ItemType.Cyberware
+  # Free CName, not a foreign key. Two items sharing a cyberwareType cannot both be
+  # equipped, so this value is unique to the mod. All eleven tiers share it, which is what
+  # stops two tiers of the same implant occupying two frontal cortex slots and is what lets
+  # KSTP_CyberwareTier() assume at most one match (Policy.reds:114-120).
+  cyberwareType: KSTPTargetingCoprocessor
+  # Frontal cortex has no mandatory core implant, so this must not claim to be one.
+  isCoreCW: False
+  quality: Quality.$(quality)
+
+  # The ripperdoc upgrade chain. Each tier names the record one step up; the top tier
+  # names None, which is what ends the chain and hides the upgrade button.
+  nextUpgradeItem: $(next)
+  upgradeCostMult: 1
+
+  blueprint: Items.GenericShardableCyberwareBlueprint
+  minigameInstance: minigame_v2.DefaultItemMinigame
+  crosshair: Crosshairs.None
+  # Inline UIIcon rather than a foreign key, the form ChipwareExpansion uses on its own
+  # frontal cortex processors (zz_zetatech_neuralProcessor.yaml:91-93). The atlas and part
+  # below are vanilla and in active use by that mod on game build 2.31.
+  #
+  # Other vanilla cyberware parts, from the same mod's notes, if a different look suits:
+  #   item_icons5.inkatlas  cwf_sandevistan4   red and black
+  #   item_icons6.inkatlas  cwf_sandevistan1   red and silver
+  #   item_icons7.inkatlas  cwf_sandevistan3   white and yellow
+  #
+  # An unresolved part name is cosmetic: blank icon, logged warning, no gameplay effect.
+  icon:
+    atlasResourcePath: base\gameplay\gui\common\icons\items\item_icons6.inkatlas
+    atlasPartName: cwf_armscyberwareshared4
+
+  # No world entity: a frontal-cortex implant has no visual representation, so
+  # nothing is spawned or attached.
+  entityName: ''
+  appearanceName: ''
+  animSetResource: ''
+  animFeatureName: ItemData
+  animName: ui_garment_pose
+  parentAttachmentType: ParentAttachmentType.Slot
+
+  canDrop: True
+  deprecated: False
+  enableNpcRPGData: False
+  garmentOffset: 0
+  isCached: False
+  isCustomizable: False
+  isGarment: False
+  isPart: False
+  isSingleInstance: False
+  mass: 1
+  powerLevelDeterminedByParent: False
+  qualityRestrictedByParent: False
+  replicateWhenNotActive: False
+  savable: False
+  useHeadgearGarmentAggregator: False
+  useNewSpawnMethod: False
+  # Must stay True while `variants:` below carries the Humanity cost record. False with a
+  # populated variants list is the silent-failure shape: the record parses and the implant
+  # equips, and it costs nothing.
+  usesVariants: True
+
+  animationParameters: []
+  appearanceSuffixes: []
+  appearanceSuffixesOwnerOverride: []
+  attachmentSlots: []
+  cameraForward: {x: 0, y: 0, z: 0}
+  cameraUp: {x: 0, y: 0, z: 0}
+  connections: []
+  equipAreas: []
+  equipPrereqs: []
+  gameplayRestrictions: []
+  hairSkinnedMeshComponents: []
+  objectActions: []
+  parts: []
+  placementSlots: []
+  previewBBoxOverride: []
+  requiredSlots: []
+  slotPartList: []
+  slotPartListPreset:
+    - Items.GenericItemRootPreset
+  statModifierGroups: []
+  statPools: []
+  visualTags: []
+  weakspots: []
+
+  # Cyberware capacity cost.
+  #
+  # Remaining capacity is HumanityAvailable minus HumanityOverallocated
+  # (player.script:2912), so an implant charges capacity by subtracting from the former.
+  # An item declaring no such modifier is free, which this one should not be.
+  #
+  # Flat at 6 across all eleven tiers. Capacity does not track quality anywhere on the
+  # vanilla roster: the Bioconductor charges 16 at tier 1 and 16 at tier 5++, and every
+  # step between. Upgrading an implant buys effect, never a bigger bill, so the cost sits
+  # outside the $instances table on purpose.
+  #
+  # Costed at 6 against the vanilla frontal cortex roster, which spans 3 to 50. What the
+  # cost tracks is how broadly the implant pays off:
+  #
+  #   conditional utility   Kerenzikov Boost System 3, Mechatronic Core 5, Self-ICE 5
+  #   general utility       RAM Upgrade 8, Camillo RAM Manager 8, Ex-Disk 10
+  #   broad passives        Newton Module 14, Bioconductor 16, Memory Boost 18
+  #   iconics               RAM Reallocator 40, Quantum Tuner 45, Axolotl 48
+  #
+  # 6 places this just above the conditional cluster. Head and weak spot tracking on a
+  # smart weapon is a direct damage gain and the protocol layer adds target selection on
+  # top, which puts it over Mechatronic Core. It stays well under the general-utility band
+  # because it is inert without a smart weapon in hand, the same conditionality that keeps
+  # Mechatronic Core and the Kerenzikov Boost System cheap.
+  #
+  # Not implemented: attribute attunement. Several frontal cortex implants scale with an
+  # attribute, and on the vanilla ladder the attunement appears at tier 3 rather than at
+  # tier 1: the Bioconductor gains "Intelligence Attuned" at tier 3. If this implant ever
+  # takes an attunement it is Intelligence, at tier 3 and above. Smart weapons are an
+  # Intelligence-aligned system, with the smart-weapon and target-tracking perks living in
+  # the Intelligence tree.
+  #
+  # Charged through the vanilla Variants.Humanity<N>Cost records. Item_Record.Variants() is
+  # typed array<wref<RandomVariant_Record>> (orphans.script:15191), which reads as unrelated
+  # to capacity, but that generic type is what the game uses for it. Every shipping cyberware
+  # mod costs its implants this way: BlackChrome spans Humanity14Cost through Humanity48Cost,
+  # ChipwareExpansion uses Humanity4Cost on its cyber liver and Humanity0Cost on its neural
+  # processors. Records confirmed present: 0, 2, 4, 5, 6, 8, 10, 12, 14, 15, 16, 18, 20, 25,
+  # 30, 35, 48, plus TinkererVariant forms at 10, 20, 25 and 30.
+  #
+  # A HumanityAvailable stat modifier on the item is not the mechanism and no shipping record
+  # uses one.
+  statModifiers: []
+  variants: [Variants.Humanity6Cost]
+
+  # The cyberware pricing chain, in the order a shipping cyberware mod applies it
+  # (ChipwareExpansion zz_zetatech_neuralProcessor.yaml:64-81). Price.BasePrice is the
+  # generic item base and prices cyberware far too low; Price.BaseCyberwarePrice is the
+  # cyberware-specific base, and the multipliers scale it by quality tier and apply the
+  # street cred discount the rest of the roster gets.
+  #
+  # Nothing in the chain is per-tier. Price.ItemQualityMultiplier reads the item's own
+  # quality, so the same four entries price all eleven records and the ladder climbs on its
+  # own, the way the vanilla roster does: the Bioconductor runs 841 at tier 1 to 19,150 at
+  # tier 5++.
+  buyPrice:
+    - Price.BaseCyberwarePrice
+    - Price.ItemQualityMultiplier
+    - Price.CyberwareMultiplier
+    - Price.BuyPrice_StreetCred_Discount
+  sellPrice:
+    - Price.BaseCyberwarePrice
+    - Price.ItemQualityMultiplier
+    - Price.CyberwareMultiplier
+    - Price.CyberwareSellMultiplier
+
+  tags:
+    - Cyberware
+    - HideInBackpackUI
+
+  OnAttach: []
+  OnLooted: []
+  OnEquip:
+    - KSTP.PkgTargetingProtocol_T$(tier)
+
+# ---------------------------------------------------------------------------
+# Ripperdoc stock
+#
+# One entry, not eleven. A vendor that stocked the whole ladder at once would let a
+# level 5 player buy tier 5++ outright and would make nextUpgradeItem pointless. The
+# stocked record is the tier 3 Rare: it is the middle of the ladder, and it is the tier at
+# which the faction and threat axis starts being enforced (KSTP_FactionAxisMinTier(),
+# Policy.reds:81), so the entry a player can buy is the one that turns on the feature the
+# mod is named for. The other ten are reached through the ripperdoc upgrade panel, which
+# walks the nextUpgradeItem chain in both directions from whatever is installed.
+#
+# Victor Vektor (Watson / Little China) is the only ripperdoc vendor ID confirmable
+# against the 2.31 dump: it appears verbatim in
+# cyberpunk/systems/marketSystem/vendor.script as t"Vendors.wat_lch_ripperdoc_01". The
+# rest of the ripperdoc roster is TweakDB-only data with no script reference, and
+# appending to a misspelled vendor creates a dead record instead of erroring, so no
+# other IDs are guessed here.
+#
+# itemStock is array<foreign_key:VendorItem_Record> (orphans.script:23750, :23862). The
+# stock entry is declared once as a named VendorItem record and appended to the vendor
+# by TweakDBID rather than inlined into the array. Both forms parse; the inline
+# {item:, quantity:} mapping under !append is what wannabeEdgerunner.yaml:515-533 ships.
+# A named record plus !append-once is idempotent, so a TweakXL hot reload cannot stack
+# duplicate stock entries. Scalar-append precedent: Custom Map Markers
+# NewFilterItem.yaml:22-23, and Virtual Car Dealer
+# basic_22000_chevalier_combat_cab.yaml:15.
+#
+# quantity is array<foreign_key:StatModifier_Record> (VendorWare_Record,
+# orphans.script:16541). Vendors.Always_Present is vanilla, used verbatim by
+# wannabeEdgerunner.yaml:518.
+#
+# To stock another ripperdoc, reuse the same VendorItem record under that vendor's ID:
+#
+#   Vendors.<vendor_id>.itemStock:
+#     - !append-once KSTP.VendorItem_Coprocessor
+# ---------------------------------------------------------------------------
+
+KSTP.VendorItem_Coprocessor:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorRare
+  quantity:
+    - Vendors.Always_Present
+
+Vendors.wat_lch_ripperdoc_01.itemStock:
+  - !append-once KSTP.VendorItem_Coprocessor
