@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+  Kiroshi Smart Targeting Protocol: input bindings.
+
+  Structure follows the reference corpus:
+    CP77Mods\Limited HUD\r6\input\LimitedHUD.xml          (context + include + overridableUI)
+    CP77Mods\Immersive Timeskip\r6\input\ImmersiveTimeskip.xml  (acceptedEvents, multi-context)
+
+  The `overridableUI` values must match the EInputKey field names on KSTPHotkeys in
+  src/r6/scripts/KSTP/UI/Settings.reds. That match is what lets Mod Settings rebind
+  these keys.
+
+  Consumed by src/r6/scripts/KSTP/Input/Hotkeys.reds. Without an input loader the actions
+  never fire, and the mod stays fully usable from the settings menu.
+-->
+<bindings>
+    <!-- inputContexts -->
+    <context name="KSTP" >
+        <action name="KSTP_CycleProtocol" map="KSTP_CycleProtocol_Button" />
+        <action name="KSTP_Overlay" map="KSTP_Overlay_Button" />
+    </context>
+
+    <!-- Exploration is the base gameplay context and stays active with a weapon drawn and
+         while aiming, which is exactly when these bindings need to work. VehicleDrive is
+         included because smart weapons are usable from a vehicle. -->
+    <context name="Exploration" append="true">
+        <include name="KSTP" />
+    </context>
+    <context name="VehicleDrive" append="true">
+        <include name="KSTP" />
+    </context>
+
+    <!-- Cycling is a discrete action; the overlay hotkey needs both edges so it can be
+         held. No <hold> element: hold-to-show should track the physical key with no
+         arming delay, and the hold-vs-toggle choice is made in script from settings. -->
+    <acceptedEvents action="KSTP_CycleProtocol" >
+        <event name="BUTTON_PRESSED" />
+    </acceptedEvents>
+
+    <acceptedEvents action="KSTP_Overlay" >
+        <event name="BUTTON_PRESSED" />
+        <event name="BUTTON_RELEASED" />
+    </acceptedEvents>
+
+    <!-- inputUserMapping
+
+      Defaults are the bracket keys rather than letter keys. Vanilla
+      r6/config/inputUserMappings.xml binds every letter IK_A..IK_Z across its contexts, so
+      any letter default collides with a vanilla action or with another mod's bindings.
+
+      The brackets are free in vanilla and across the mod input files in the reference
+      corpus, sit adjacent so they read as a pair, and avoid IK_F12 (screenshot key on most
+      overlays) and the numpad (free, but out of reach mid-fight). Neither falls under the
+      left hand during WASD movement, so both carry overridableUI and Mod Settings can
+      rebind them per player.
+    -->
+    <mapping name="KSTP_CycleProtocol_Button" type="Button" >
+        <button id="IK_LeftBracket" overridableUI="kstpCycleProtocolKey" />
+    </mapping>
+    <mapping name="KSTP_Overlay_Button" type="Button" >
+        <button id="IK_RightBracket" overridableUI="kstpOverlayKey" />
+    </mapping>
+</bindings>

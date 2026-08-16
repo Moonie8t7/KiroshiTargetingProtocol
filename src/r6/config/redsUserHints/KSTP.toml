@@ -1,0 +1,24 @@
+# Kiroshi Smart Targeting Protocol: friendly messages for unresolved references.
+#
+# Format and wording follow the reference corpus:
+#   CP77Mods\Wannabe Edgerunner\r6\config\redsUserHints\WannabeEdgerunner.toml
+#   CP77Mods\Enhanced Craft\r6\config\redsUserHints\EnhancedCraft.toml
+#
+# KSTP names the `ModSettings` native class nowhere, so a missing mod_settings plugin
+# degrades to compiled defaults instead of failing to compile. MISSING_MOD_SETTINGS is a
+# safety net in case a later change reintroduces the reference.
+
+[[UNRESOLVED_REF]]
+id = "MISSING_MOD_SETTINGS"
+line_contains = "ModSettings."
+message = "Kiroshi Smart Targeting Protocol tried to call Mod Settings but you don't have it installed. Try to (re)install it and make sure that you have \"red4ext\\plugins\\mod_settings\" folder."
+
+[[UNRESOLVED_METHOD]]
+id = "MISSING_TWEAKXL"
+line_contains = "TweakDBInterface"
+message = "One of your mods depends on TweakXL but you don't have it installed. Try to (re)install it and make sure that you have \"red4ext\\plugins\\TweakXL\" folder."
+
+[[UNRESOLVED_METHOD]]
+id = "MISSING_TWEAKXL"
+line_contains = "TweakDBManager"
+message = "One of your mods depends on TweakXL but you don't have it installed. Try to (re)install it and make sure that you have \"red4ext\\plugins\\TweakXL\" folder."
