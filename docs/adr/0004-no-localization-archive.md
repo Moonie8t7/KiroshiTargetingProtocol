@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Superseded by [0008](0008-display-names-via-codeware.md). The fallback this record depended on
+does not exist for item names, and the failure it anticipated is the one that occurred.
 
 ## Context
 

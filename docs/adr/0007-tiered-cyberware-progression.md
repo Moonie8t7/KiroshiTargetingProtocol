@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Partly superseded by [0009](0009-settings-are-the-contract.md). The faction and threat axis is
+no longer gated at tier 3: it is available at any tier, and `KSTP_FactionAxisMinTier()` is
+deleted. Statements below about that gate record the decision as taken, not current behavior.
+The eleven-tier ladder, the per-tier class coverage and the flat capacity cost stand.
 
 ## Context
 

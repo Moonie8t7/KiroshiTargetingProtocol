@@ -17,6 +17,11 @@ A comment earns its place when it records something the code cannot say for itse
 File headers state what the module owns and what it must not do. Function comments are warranted
 where the function carries a constraint, not as a matter of routine.
 
+Reasoning lives in `docs/adr/`, not in the source. A comment that argues a case, recounts what was
+tried first, or narrates a defect belongs in a record; the source cites it by number. Inside a
+function body the default is no comment at all: write one only where a reader changing that line
+would otherwise break an invariant, and then state the invariant and stop.
+
 ## Citing game internals
 
 Anything asserted about the base game carries a `file.script:line` reference into the decompiled
