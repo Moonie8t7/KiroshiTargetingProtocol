@@ -804,12 +804,170 @@ local function drawPinnedReadout()
 end
 
 -- ---------------------------------------------------------------------------
+-- icon probe
+--
+-- An item's icon is a foreign key to a gamedataUIIcon_Record, and the atlas part names it
+-- points at live inside a base-game .inkatlas. Nothing outside the archives lists them, so
+-- reading them back off a vanilla frontal-cortex implant at runtime is the only way to name
+-- one without unpacking. The last entry is ours, and doubles as a check that the display
+-- name registered in UI/Localization.reds resolved.
+--
+-- One shot at startup. Delete this block once the icon is settled.
+-- ---------------------------------------------------------------------------
+
+local ICON_PROBE = {
+  'Items.AdvancedVisualCortexSupportCommon',
+  'Items.IconicAdvancedSubdermalCoProcessorLegendary',
+  'Items.IconicCamilloRamManagerLegendary',
+  'Items.MemoryBooster',
+  'Items.KSTPKiroshiIFFCoprocessorRare',
+}
+
+-- Flats worth reading back. Everything here is a question that cannot be answered from
+-- disk: the values live in the compiled TweakDB, where resource paths are hashes and
+-- array-typed flats need a real parser.
+local FLAT_PROBE = {
+  -- Component budget bounds. KSTP adds Additive 2 per unlocked class over a vanilla base
+  -- of 0. If max is 1 the budget is really a flag and the 2 is clamped; if it is higher,
+  -- the value is a count and the totals below decide how much lock capacity KSTP adds.
+  'BaseStats.SmartGunTrackHeadComponents.min',
+  'BaseStats.SmartGunTrackHeadComponents.max',
+  'BaseStats.SmartGunTrackChestComponents.max',
+  'BaseStats.SmartGunTrackWeakSpotComponents.max',
+  -- The separate multi-entity axis. This is the one the Intelligence perk Targeting Prism
+  -- drives, and the one KSTP must stay out of.
+  'BaseStats.SmartGunTrackMultipleEntitiesInADS.min',
+  'BaseStats.SmartGunTrackMultipleEntitiesInADS.max',
+  -- Which numeric two-column rows a cyberware card is permitted to draw.
+  'UIMaps.Cyberware.secondaryStats',
+  -- What a vanilla frontal-cortex implant puts in the shard slot. Needed before KSTP can
+  -- name one: a dangling foreign key passes TweakXL silently.
+  'Items.AdvancedVisualCortexSupportCommon.slotPartListPreset',
+  'Items.AdvancedMechatronicCoreCommon.slotPartListPreset',
+  'Items.AdvancedVisualCortexSupportCommon.statModifiers',
+  'Items.AdvancedVisualCortexSupportCommon.OnEquip',
+  -- Attunement numbers. The item-side AttunementHelper modifier only supplies the figure the
+  -- card prints; the real bonus lives in the attunement package. The wiki documents the
+  -- relationship for IntelligenceAllDamage (real multiplier 0.0005, helper 0.05) so reading
+  -- both lets the ratio be confirmed rather than assumed for the smart-weapon variant.
+  -- These _inline names are read here only; nothing in the shipped yaml references them,
+  -- because inline names are regenerated per patch.
+  'Attunements.IntelligenceAllDamage_inline0.value',
+  'Attunements.IntelligenceAllDamage_inline0.statType',
+  'Attunements.IntelligenceSmartWeaponDamage_inline0.value',
+  'Attunements.IntelligenceSmartWeaponDamage_inline0.statType',
+  'Attunements.IntelligenceSmartWeaponDamage_inline0.refStat',
+  'Attunements.IntelligenceSmartWeaponDamage_inline1.value',
+  'Attunements.IntelligenceSmartWeaponDamage_inline1.statType',
+  -- Whatever vanilla item already carries the smart-weapon attunement: its own
+  -- AttunementHelper modifier is the reference value KSTP should match.
+  'Items.AdvancedSmartLinkCommon.statModifiers',
+  'Items.AdvancedSmartLinkCommon.OnEquip',
+}
+
+-- Does a plain English scalar survive the native LocalizedDescription() accessor, or does
+-- it resolve as a localization key and come back empty? This is the open question behind
+-- the blank effect list. KSTP's package UIData carries a bare scalar; a vanilla one
+-- carries a real LocKey. Printing both bracketed makes an empty string unmistakable.
+local UIDATA_PROBE = {
+  'KSTP.PkgTargetingProtocol_UI',
+  'Attunements.IntelligenceAllDamage',
+  'Attunements.IntelligenceSmartWeaponDamage',
+}
+
+local function probeIcons()
+  Log.write('--- card probe ---')
+
+  for _, id in ipairs(ICON_PROBE) do
+    local rec = api.safe(function() return TweakDB:GetRecord(id) end)
+    if not rec then
+      Log.write('  %-52s NO RECORD', id)
+    else
+      -- iconPath is the field the inventory resolver actually reads
+      -- (inventoryItemsManager.script:128-142). The inline icon record is not on that path,
+      -- so it is reported only to show it stays empty on vanilla records.
+      local path  = api.safe(function() return tostring(rec:IconPath()) end)
+      local icon  = api.safe(function() return rec:Icon() end)
+      local part  = icon and api.safe(function() return api.nameStr(icon:AtlasPartName()) end)
+      local shown = api.safe(function() return GetLocalizedItemNameByCName(rec:DisplayName()) end)
+      Log.write('  %-52s name="%s" iconPath=%s inlinePart=%s',
+        id, tostring(shown or ''), tostring(path or 'nil'), tostring(part or 'nil'))
+    end
+  end
+
+  Log.write('  -- flats --')
+  for _, flat in ipairs(FLAT_PROBE) do
+    local v = api.safe(function() return TweakDB:GetFlat(flat) end)
+    local shown
+    if type(v) == 'table' then
+      local parts = {}
+      for _, e in ipairs(v) do parts[#parts + 1] = tostring(e) end
+      shown = '[' .. table.concat(parts, ', ') .. ']'
+    else
+      shown = tostring(v)
+    end
+    Log.write('  %-58s = %s', flat, shown)
+  end
+
+  Log.write('  -- UIData localizedDescription (empty brackets means the scalar died) --')
+  for _, id in ipairs(UIDATA_PROBE) do
+    local rec = api.safe(function() return TweakDB:GetRecord(id) end)
+    if not rec then
+      Log.write('  %-52s NO RECORD', id)
+    else
+      local d = api.safe(function() return rec:LocalizedDescription() end)
+      local n = api.safe(function() return rec:LocalizedName() end)
+      Log.write('  %-52s name=[%s] desc=[%s]', id, tostring(n or ''), tostring(d or ''))
+    end
+  end
+
+  Log.write('--- card probe end ---')
+  Log.write('  (component budget deferred until a weapon is drawn)')
+end
+
+-- The live component budget on the equipped weapon. This is the number the balance decision
+-- turns on: the project's notes claim vanilla ships Chest 3 / Leg 2 / Mechanical 1 and 0 for
+-- the other four, and that has never been read back from the game.
+--
+-- Split out of probeIcons because onInit fires at load, long before the player can have a
+-- weapon in hand, so running it there can only ever report an empty slot. Polled instead,
+-- and logged once on the first success.
+local budgetDone = false
+local budgetNextCheck = 0
+
+local function probeBudget()
+  local wep = api.heldWeapon()
+  if not wep then return false end
+
+  -- Read both stats objects. The effector applies to ItemData (effector.script:37) while
+  -- crosshair code reads the entity, and vanilla is inconsistent between the two.
+  local t = api.weaponStatTargets(wep)
+  Log.write('--- component budget ---')
+  Log.write('    weapon: %s', api.weaponLabel(wep))
+  for _, s in ipairs({ 'Head', 'Chest', 'Leg', 'Mechanical', 'WeakSpot', 'Breach', 'Vehicle' }) do
+    local stat = 'SmartGunTrack' .. s .. 'Components'
+    local vi = api.statValue(t.itemData, stat)
+    local ve = api.statValue(t.entity, stat)
+    Log.write('    %-40s itemData=%s entity=%s', stat, tostring(vi or 'nil'), tostring(ve or 'nil'))
+  end
+  -- The multi-entity axis, for contrast. It is a boolean (max 1) and belongs to the
+  -- Intelligence perk Targeting Prism. KSTP must leave it at its vanilla value.
+  local mi = api.statValue(t.itemData, 'SmartGunTrackMultipleEntitiesInADS')
+  local me = api.statValue(t.entity, 'SmartGunTrackMultipleEntitiesInADS')
+  Log.write('    %-40s itemData=%s entity=%s',
+    'SmartGunTrackMultipleEntitiesInADS', tostring(mi or 'nil'), tostring(me or 'nil'))
+  Log.write('--- component budget end ---')
+  return true
+end
+
+-- ---------------------------------------------------------------------------
 -- events
 -- ---------------------------------------------------------------------------
 
 registerForEvent('onInit', function()
   Log.write('--- KSTP Lab session start ---')
   Log.write('CET version: %s', tostring(api.safe(function() return GetVersion() end) or 'unknown'))
+  probeIcons()
   Exp.installObservers()
   say('KSTP Lab ready. Open section 1 and equip a smart weapon.')
 end)
@@ -819,6 +977,18 @@ registerForEvent('onUpdate', function(dt)
   lab.clock = lab.clock + d
   Log.tick(d)
   runDeferred(d)
+
+  -- Poll for the component budget until a weapon is in hand, then log it once. Two seconds
+  -- apart so a session spent without a smart weapon costs one cheap slot lookup per tick
+  -- rather than a stats read.
+  if not budgetDone and lab.clock >= budgetNextCheck then
+    budgetNextCheck = lab.clock + 2.0
+    local ok, res = pcall(probeBudget)
+    if ok and res then
+      budgetDone = true
+      say('Component budget captured. See the log.')
+    end
+  end
 
   lab.sinceRefresh = lab.sinceRefresh + d
   if lab.sinceRefresh >= lab.refreshInterval then
