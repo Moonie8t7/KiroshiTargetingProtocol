@@ -36,9 +36,9 @@
 # breach alone. A group is applied on its own, never alongside its predecessors, because
 # two coprocessors cannot be equipped at once (they share a cyberwareType).
 #
-# The faction and threat axis also becomes enforceable at tier 3. That is behavior rather
-# than a stat, so it is gated in script (KSTP_FactionAxisMinTier) and appears nowhere in
-# this file.
+# The faction and threat axis appears nowhere in this file. It is behavior rather than a
+# stat, so it lives in script (KSTPPolicySystem.FactionAxisAvailable), and it is not part
+# of the ladder: any installed grade enables it.
 #
 # Vanilla stat records referenced here:
 #   BaseStats.SmartGunTrack*Components                orphans.script:2784-2791
