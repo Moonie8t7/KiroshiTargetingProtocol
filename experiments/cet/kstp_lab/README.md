@@ -189,7 +189,7 @@ crosshair right now.
 
 ### 1. E-STAT - the decisive one
 
-Section **2. E-STAT -- per-NPC time-to-lock [DECISIVE]**.
+Section **2. E-STAT: per-NPC time-to-lock [DECISIVE]**.
 
 **Question:** can a `SmartGunTimeToLock*ComponentMultiplier` modifier applied to a *target NPC's*
 stats object stop that NPC being smart-locked? The entire faction/threat axis depends on the
@@ -243,7 +243,7 @@ part of a measurement.
 
 ### 2. E-TRACK - weapon-side component classes
 
-Section **3. E-TRACK -- weapon-side component tracking**.
+Section **3. E-TRACK: weapon-side component tracking**.
 
 **Question:** does the native handler re-read `SmartGunTrack*Components` live, or only when the
 weapon handler latches on draw?
@@ -280,7 +280,7 @@ moves the boxes and the other does nothing, note which: that decides which `Stat
 
 ### 3. E-IGNORE - the targeting ignore list
 
-Section **4. E-IGNORE -- targeting ignore list**.
+Section **4. E-IGNORE: targeting ignore list**.
 
 **Question:** does `TargetingSystem.AddIgnoredLookAtEntity` reach the smart-lock pipeline, or only
 the look-at / scanner channel?
@@ -319,7 +319,7 @@ you quit.
 
 ### 4. E-FILTER - script-side target filter
 
-Section **5. E-FILTER -- script-side target filter**. This one has a **control step and you must
+Section **5. E-FILTER: script-side target filter**. This one has a **control step and you must
 run it first**.
 
 1. Press **`call ProcessLookAtFilter directly`**. This calls the native entry point with a
@@ -347,7 +347,7 @@ file.
 
 ### 5. E-AIMASSIST - the ten-minute disproof
 
-Section **6. E-AIMASSIST -- preset swap (expected null result)**.
+Section **6. E-AIMASSIST: preset swap (expected null result)**.
 
 **Expected result: nothing happens.** Aim assist and smart-gun tracking are separate systems, and
 confirming that in ten minutes is worth more than a week of speculation. Recording it as FAIL is
