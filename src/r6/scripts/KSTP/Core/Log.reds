@@ -1,32 +1,26 @@
 // Kiroshi Smart Targeting Protocol: logging.
 //
-// Sinks are FTLog, FTLogWarning and FTLogError (orphans.script:53683, :66350, :66352).
-// They are the only log entry points present in the decompiled 2.31 dump, and the
-// reference corpus uses them (Limited HUD utils.reds:11, Virtual Car Dealer
-// CarDealer-System.reds:177). ModLog() and LogChannel() appear in older mod code but
-// exist nowhere in the dump, so KSTP does not build on them.
+// Provides the mod's only log entry points, each prefixed with [KSTP]. Sinks are FTLog,
+// FTLogWarning and FTLogError (orphans.script:53683, :66350, :66352): the only logging
+// functions in the decompiled 2.31 dump, and the ones the reference corpus uses (Limited
+// HUD utils.reds:11, Virtual Car Dealer CarDealer-System.reds:177). ModLog() and
+// LogChannel() appear in older mod code but exist nowhere in the dump.
 //
-// Dependency-free by design: every other KSTP file may call into this one.
+// Dependency-free: every other KSTP file may call into this one, so this file imports none.
 
 module KSTP.Core
 
-// Master debug switch, read from the Debug group in Mod Settings.
-//
-// Reading the setting rather than a compiled constant means a player filing a bug report
-// can turn tracing on without a recompile, which is the only way a mod author gets useful
-// logs back. `new KSTPDebugConfig()` yields the value the player saved, because Mod
-// Settings patches class defaults through RTTI.
-//
-// Off by default. With it off, KSTPLog.Debug() emits nothing and the per-frame call sites
-// cost one bool read. Guard any interpolated string behind DebugEnabled() so the string is
-// never built when tracing is off.
+// True when the player has enabled verbose logging in the Debug group of Mod Settings.
+// Read per call, not cached, so tracing can be turned on without a recompile.
+// `new KSTPDebugConfig()` yields the saved value because Mod Settings patches class defaults
+// through RTTI; see ADR 0010. Off by default.
 public func KSTP_DebugLoggingEnabled() -> Bool {
   return new KSTPDebugConfig().debugLogging;
 }
 
-// Declared here rather than in UI/Settings.reds because Log.reds is dependency-free by
-// design and every other file may call into it. A settings class is inert metadata, so
-// this costs nothing when Mod Settings is absent.
+// Mod Settings class for the debug switch. Declared here rather than in UI/Settings.reds to
+// keep this file dependency-free; a settings class is inert metadata when Mod Settings is
+// absent (ADR 0010).
 public class KSTPDebugConfig {
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
@@ -37,6 +31,8 @@ public class KSTPDebugConfig {
   public let debugLogging: Bool = false;
 }
 
+// Logging entry points for the whole mod. Severity selects the sink; the [KSTP] prefix is
+// added here, so callers pass an undecorated message.
 public class KSTPLog {
 
   // Startup, teardown and protocol switches. Low frequency, always emitted.
@@ -44,26 +40,27 @@ public class KSTPLog {
     FTLog(KSTPLog.Decorate(msg));
   }
 
-  // A degraded but survivable condition: a gate is off, a framework is missing, an
-  // optional lookup returned null. Nothing in this mod is allowed to be fatal, so
-  // this is the most severe outcome a normal code path can report.
+  // Degraded but survivable: a gate is off, a framework is missing, an optional lookup
+  // returned null. Nothing in this mod is fatal, so this is the most severe outcome a
+  // normal code path reports.
   public static func Warn(msg: String) -> Void {
     FTLogWarning(KSTPLog.Decorate(msg));
   }
 
-  // A contract violation: a game API returned something the dump says it cannot.
+  // Contract violation: a game API returned something the dump says it cannot.
   public static func Error(msg: String) -> Void {
     FTLogError(KSTPLog.Decorate(msg));
   }
 
+  // Emits only when verbose logging is on.
   public static func Debug(msg: String) -> Void {
     if KSTP_DebugLoggingEnabled() {
       FTLog(KSTPLog.Decorate("[dbg] " + msg));
     };
   }
 
-  // Test this before building an interpolated string inside a per-frame loop.
-  // Otherwise the string is constructed and then discarded by Debug().
+  // Guard for callers: test this before building an interpolated string in a per-frame path,
+  // otherwise the string is constructed and then discarded by Debug().
   public static func DebugEnabled() -> Bool {
     return KSTP_DebugLoggingEnabled();
   }

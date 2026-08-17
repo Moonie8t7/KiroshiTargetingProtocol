@@ -1,20 +1,17 @@
-// Kiroshi Smart Targeting Protocol: shared types.
+// Kiroshi Smart Targeting Protocol: shared type declarations.
 //
-// Every module in this mod codes against the declarations in this file. Nothing here
-// touches the game beyond enum values verified in the decompiled 2.31 script dump.
-// Keep it dependency-free so it can be loaded first.
+// Provides the enums and data classes every module codes against, plus the mapping from this
+// mod's target classes onto the gamedataStatType values the native handler reads. Enum values
+// are verified against the decompiled 2.31 script dump. Dependency-free by contract: it loads
+// first and touches no engine state.
 
 module KSTP.Core
 
-// ---------------------------------------------------------------------------
-// Target component classes
-//
-// These mirror the seven gamedataStatType entries the native smart-gun handler
-// reads (orphans.script:2784-2791). The ordinals below are local to this mod and
-// carry no game meaning; KSTPStats.TrackStatFor() and TimeToLockStatFor() map them
-// onto the real stat types.
-// ---------------------------------------------------------------------------
+// --- Target classes ---
 
+// The seven component classes the native smart-gun handler reads (orphans.script:2784-2791).
+// Ordinals are local to this mod and carry no game meaning; KSTPStats maps them onto the real
+// stat types.
 enum KSTPTargetClass {
   Head = 0,
   Chest = 1,
@@ -25,65 +22,58 @@ enum KSTPTargetClass {
   Vehicle = 6,
 }
 
-// Count of the above. Redscript has no enum reflection, so this is maintained by hand.
+// Redscript has no enum reflection; kept in step with KSTPTargetClass by hand.
 public static func KSTPTargetClassCount() -> Int32 = 7
 
-// ---------------------------------------------------------------------------
-// Policy
-// ---------------------------------------------------------------------------
+// --- Policy ---
 
-// How a policy treats targets that fall outside it.
-//   Strict:    excluded classes are turned off entirely (track stat -> 0)
-//   Preferred: excluded classes stay lockable but lock much slower (time-to-lock
-//              multiplier inflated), so permitted classes win the race
+// Treatment of target classes the protocol excludes. Strict turns them off entirely (track
+// stat 0); Preferred leaves them lockable but inflates their time-to-lock multiplier so
+// permitted classes win the race.
 enum KSTPLockPolicy {
   Strict = 0,
   Preferred = 1,
 }
 
-// Which attitudes the protocol will engage. Attitude is read live, never cached.
+// Attitudes the protocol engages. Attitude is read live, never cached.
 enum KSTPAttitudeMask {
   HostileOnly = 0,
   HostileAndNeutral = 1,
   Any = 2,
 }
 
-// A complete targeting protocol. One of these is active at a time.
+// A complete targeting protocol. One is active at a time.
 public class KSTPProtocol {
   public let id: Int32;
   public let displayName: String;
 
-  // Body-part axis. Index by KSTPTargetClass ordinal, length KSTPTargetClassCount().
+  // Body-part axis, indexed by KSTPTargetClass ordinal, length KSTPTargetClassCount().
   public let allowedClasses: array<Bool>;
   public let lockPolicy: KSTPLockPolicy;
 
-  // Multi-entity ADS tracking (gamedataStatType.SmartGunTrackMultipleEntitiesInADS,
-  // orphans.script:2789). -1 means "leave vanilla alone".
+  // gamedataStatType.SmartGunTrackMultipleEntitiesInADS (orphans.script:2789).
+  // -1 leaves vanilla alone.
   public let multiEntityADS: Int32;
 
-  // Faction axis. Gated: enforced only while KSTPGate.FactionAxisEnabled() is true.
-  // Populated regardless, so the HUD can color-code by policy even on a build where
-  // enforcement is switched off.
+  // Faction axis, enforced only while KSTPGate.FactionAxisEnabled() is true. Populated
+  // regardless, so the HUD can colour-code by protocol on a build where enforcement is off.
   public let factionFilterEnabled: Bool;
-  // Keyed on Affiliation_Record.EnumName() (CName), not on the gamedataAffiliation
-  // integer: mod-added factions cannot extend a compiled RTTI enum.
+  // Keyed on Affiliation_Record.EnumName(), not on the gamedataAffiliation integer: mod-added
+  // factions cannot extend a compiled RTTI enum.
   public let allowedAffiliations: array<CName>;
-  // Affiliations the author named and refused outright. Distinct from "simply absent
-  // from allowedAffiliations", and checked before it. Without this list, allowUnlisted
-  // below would readmit every faction the player switched off, because an unticked
-  // faction and a faction the menu has never heard of look identical once the allow-list
-  // is built. Same CName keying, and android variants are listed alongside their parent.
+  // Affiliations refused by name, checked before allowedAffiliations and distinct from mere
+  // absence, which allowUnlistedAffiliations may readmit. Same CName keying; android variants
+  // are listed alongside their parent.
   public let deniedAffiliations: array<CName>;
-  // How a target whose affiliation is valid but absent from allowedAffiliations is treated.
-  //   true:  allowedAffiliations is a preference list; anything unlisted still passes
-  //   false: allowedAffiliations is a hard whitelist; anything unlisted is refused
-  // Only consulted when allowedAffiliations is non-empty; an empty list means "no
-  // affiliation restriction". Defaults to true so a partially-filled list cannot
-  // silently refuse every mod-added or minor faction the author never thought about.
+  // Treatment of an affiliation absent from allowedAffiliations: true makes that list a
+  // preference and admits the unlisted, false makes it a hard whitelist. Consulted only when
+  // allowedAffiliations is non-empty; an empty list imposes no affiliation restriction.
   public let allowUnlistedAffiliations: Bool;
   public let attitudeMask: KSTPAttitudeMask;
   public let allowCivilians: Bool;
 
+  // Shipping defaults, with every target class permitted and allowedClasses sized to
+  // KSTPTargetClassCount().
   public static func Make(id: Int32, name: String) -> ref<KSTPProtocol> {
     let p: ref<KSTPProtocol> = new KSTPProtocol();
     p.id = id;
@@ -102,6 +92,7 @@ public class KSTPProtocol {
     return p;
   }
 
+  // Ordinals outside allowedClasses are permitted.
   public func Allows(cls: KSTPTargetClass) -> Bool {
     let i: Int32 = EnumInt(cls);
     if i < 0 || i >= ArraySize(this.allowedClasses) { return true; }
@@ -116,12 +107,7 @@ public class KSTPProtocol {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Classification
-//
-// The read side. Every field here is obtainable from pure redscript and is inert:
-// no AI reaction, no attitude mutation, no wanted-level side effect.
-// ---------------------------------------------------------------------------
+// --- Classification ---
 
 // Coarse bucket used by the HUD and by faction policy. Derived, not a game enum.
 enum KSTPThreatClass {
@@ -138,13 +124,15 @@ enum KSTPThreatClass {
   MaxTac = 10,
 }
 
+// The read side of a candidate target. Every field is obtainable from pure redscript and is
+// inert: no AI reaction, no attitude mutation, no wanted-level side effect.
 public class KSTPClassification {
   public let valid: Bool;
 
   // True when the entity is a ScriptedPuppet. Devices and vehicles are lockable
-  // (SmartGunTrackVehicleComponents and SmartGunTrackMechanicalComponents exist) but
-  // have no Character_Record and no attitude agent. GetAttitudeTowards silently
-  // reports AIA_Neutral for them, so branch on this before trusting `attitude`.
+  // (SmartGunTrackVehicleComponents and SmartGunTrackMechanicalComponents exist) but have no
+  // Character_Record and no attitude agent; GetAttitudeTowards silently reports AIA_Neutral
+  // for them, so branch on this before trusting `attitude`.
   public let isPuppet: Bool;
 
   // Affiliation_Record.EnumName(), stable across mods. Empty CName if unavailable.
@@ -164,6 +152,12 @@ public class KSTPClassification {
   public let isCrowd: Bool;
   public let isNetrunner: Bool;
 
+  // True for a VehicleObject, and the only signal distinguishing a car from a device in the permit
+  // decision. Vehicle exclusion is enforced by the class mask, not by lock-time inflation, which
+  // was measured to have no effect on a vehicle; this flag drives the overlay verdict. See
+  // ADR 0013.
+  public let isVehicle: Bool;
+
   public static func Invalid() -> ref<KSTPClassification> {
     let c: ref<KSTPClassification> = new KSTPClassification();
     c.valid = false;
@@ -172,17 +166,14 @@ public class KSTPClassification {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Stat mapping
-//
-// The bridge from KSTPTargetClass to the real gamedataStatType values the native
-// handler reads. Verified against orphans.script:2775-2791.
-// ---------------------------------------------------------------------------
+// --- Stat mapping ---
 
+// Bridge from KSTPTargetClass to the gamedataStatType values the native handler reads.
+// Verified against orphans.script:2775-2791.
 public class KSTPStats {
 
-  // Weapon-side: whether the smart gun tracks this component class at all.
-  // Vanilla base weapon ships Chest=3, Leg=2, Mechanical=1.
+  // Weapon-side: whether the smart gun tracks this component class at all. The vanilla base
+  // weapon ships Chest=3, Leg=2, Mechanical=1.
   public static func TrackStatFor(cls: KSTPTargetClass) -> gamedataStatType {
     switch cls {
       case KSTPTargetClass.Head:       return gamedataStatType.SmartGunTrackHeadComponents;
@@ -196,9 +187,8 @@ public class KSTPStats {
     return gamedataStatType.Invalid;
   }
 
-  // Target-side: how long this component class takes to lock. Inflating this on the
-  // target NPC's StatsObjectID is how PREFERRED works and is also the whole mechanism
-  // behind the faction axis; a large enough multiplier stops the lock from completing.
+  // Target-side: how long this component class takes to lock. Inflating it on the target NPC's
+  // StatsObjectID implements the Preferred policy and the faction axis alike; see ADR 0003.
   public static func TimeToLockStatFor(cls: KSTPTargetClass) -> gamedataStatType {
     switch cls {
       case KSTPTargetClass.Head:       return gamedataStatType.SmartGunTimeToLockHeadComponentMultiplier;
@@ -225,8 +215,8 @@ public class KSTPStats {
     return "?";
   }
 
-  // Multiplier applied to a de-prioritized or denied class. Large enough that the
-  // lock realistically never completes, small enough to stay well inside float range.
+  // Multiplier applied to a de-prioritised or denied class: large enough that the lock never
+  // realistically completes, small enough to stay well inside float range.
   public static func SuppressionMultiplier() -> Float = 1000.0
 }
 

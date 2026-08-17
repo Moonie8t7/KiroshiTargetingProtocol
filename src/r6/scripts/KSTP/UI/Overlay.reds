@@ -1,54 +1,41 @@
 // Kiroshi Smart Targeting Protocol: IFF overlay.
 //
-// Reads the live smart-gun lock list from the UI_ActiveWeaponData.SmartGunParams blackboard
-// (blackboardDefinitions.script:1601, payload smartGunUIParameters at
-// orphans.script:54420-54460) and draws a compact IFF label over every tracked candidate:
-// affiliation, threat class, attitude, and the active protocol's permit or refuse verdict.
+// Draws one label per tracked smart-gun candidate over the vanilla crosshair target holder:
+// affiliation, threat class, attitude, and the active protocol's verdict. Read-only with respect
+// to the game, so Detach() restores nothing beyond its own widgets. A verdict is drawn at every
+// cyberware tier, and a refusal nothing enforces is drawn REFUSE* rather than REFUSE
+// (ADR 0003, ADR 0011).
 //
-// The verdict is drawn at every cyberware tier. A refusal the coprocessor is too low a tier to
-// enforce, or one the gate has turned off, is marked REFUSE* in amber against the red REFUSE of
-// one Enforcement/Faction.reds is applying, so the label never promises a denial the gun will
-// not honor while still showing what the protocol would refuse.
+// Data comes from the UI_ActiveWeaponData.SmartGunParams payload
+// (blackboardDefinitions.script:1601; smartGunUIParameters at orphans.script:54420-54460),
+// delivered by the host hooks at the bottom of this file. GameObject.IsTargetedWithSmartWeapon()
+// and OnSmartGunLockEvent are not a usable substitute: that handler ignores evt.locked and
+// evt.lockedOnByPlayer and flips its own cached bool on every event (gameObject.script:2623-2637).
 //
-// This module is read-only with respect to the game. It never touches targeting state, never
-// applies a stat modifier and never mutates a world entity, so teardown has nothing to restore
-// beyond its own widgets, which Detach() removes symmetrically.
-//
-// Host: CrosshairGameController_Smart_Rifl (crosshairController_Smart_Rifle.script:1). That
-// controller exists only while a smart weapon's crosshair is up, and
-// CrosshairGameController_BlackwallForce extends it, so hooking it covers both. The
-// registration and read pattern follows hud_panzer.script:130-132 and
-// crosshairController_Smart_Rifle.script:107/112.
-//
-// GameObject.IsTargetedWithSmartWeapon() and OnSmartGunLockEvent are not a usable source of
-// truth here. The handler ignores evt.locked and evt.lockedOnByPlayer and flips its own cached
-// bool on every event (gameObject.script:2623-2637), so the flag it maintains does not track
-// the real lock state. The blackboard payload is the authority.
+// Host is CrosshairGameController_Smart_Rifl (crosshairController_Smart_Rifle.script:1), live only
+// while a smart weapon's crosshair is up; CrosshairGameController_BlackwallForce extends it.
+// Depends on KSTP.Core, on KSTP.Enforcement for KSTP_PushSmartGunParams, and on Mod Settings as a
+// soft dependency (ADR 0010).
 
 module KSTP.UI
 
 import KSTP.Core.*
+import KSTP.Enforcement.*
 
-// Default vertical lift, in screen units, that puts the IFF label above the target rather than
-// centered on it. Written as a function because redscript will not fold a negated literal into
-// a constant field initializer. KSTPOverlayConfig.OffsetY is the player-facing delta on top.
+// Vertical lift, in screen units, that puts the label above the target rather than centred on it.
+// A function because redscript will not fold a negated literal into a constant field initializer.
 public func KSTP_LabelBaselineY() -> Float = -52.0
 
 // ---------------------------------------------------------------------------
 // Settings
-//
-// Declared here rather than in UI/Settings.reds so the overlay is self-contained and runs on
-// the compiled defaults when the Mod Settings framework is absent; the runtimeProperty
-// annotations are inert without it. UI/Settings.reds imports this class rather than declaring
-// a second copy, which would show duplicated entries in the menu.
-//
-// Display strings are literals, not LocKeys. The mod ships no .archive and has no WolvenKit
-// pack step, so a custom key has nothing to resolve against and Mod Settings renders the raw
-// key text in the menu. Literals are what the shipping corpus uses when it has no localization
-// archive of its own; CP77Mods\Limited HUD passes 'E3 Compass' and 'FPS Counter' straight
-// through. The ModSettings.mod value must stay byte-identical to the one in Core/Gate.reds and
-// UI/Settings.reds, or the plugin files these options onto a second, separate menu page.
 // ---------------------------------------------------------------------------
+
+// Declared here rather than in UI/Settings.reds so the overlay runs on the compiled defaults with
+// Mod Settings absent (ADR 0010); UI/Settings.reds imports this class instead of declaring a
+// second copy. Display strings are literals, not LocKeys: the mod ships no .archive, so a custom
+// key has nothing to resolve against and the menu renders the raw key text (ADR 0004, ADR 0008).
+// ModSettings.mod must stay byte-identical to Core/Gate.reds and UI/Settings.reds, or these
+// options file onto a separate menu page.
 
 // Which corner of the vanilla smart-crosshair target holder the labels measure from.
 enum KSTPOverlayAnchorMode {
@@ -56,53 +43,55 @@ enum KSTPOverlayAnchorMode {
   HolderCentered = 1,
 }
 
+// When the labels are drawn. One control with one answer, replacing three booleans; see ADR 0011.
+// The old field names are absent deliberately: Mod Settings maps by field name and ignores keys
+// with no matching field, so stale entries in an existing user.ini are inert.
+enum KSTPOverlayVisibility {
+  Always = 0,
+  WhileAiming = 1,
+  WhileKeyHeld = 2,
+  Never = 3,
+}
+
+// Overlay settings. Mod Settings patches the class defaults, so a fresh instance carries the
+// player's current values.
 public class KSTPOverlayConfig {
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
-  @runtimeProperty("ModSettings.displayName", "Show the IFF overlay")
-  @runtimeProperty("ModSettings.description", "Draws a label over every target the smart weapon is tracking: faction, threat class, attitude, and whether the active protocol permits or refuses it. Off removes the labels entirely.")
-  public let Enabled: Bool = true;
+  @runtimeProperty("ModSettings.category", "Debug - IFF overlay")
+  @runtimeProperty("ModSettings.category.order", "910")
+  @runtimeProperty("ModSettings.displayName", "Overlay visibility")
+  @runtimeProperty("ModSettings.description", "When to draw a label over every target the smart weapon is tracking: faction, threat class, attitude, and whether the active protocol permits or refuses it. ALWAYS draws whenever a smart weapon is up. ONLY WHILE AIMING draws down sights, and the overlay key still pulls it up from the hip. ONLY WITH THE OVERLAY KEY draws nothing until that key is used. NEVER removes the labels entirely. The two key options need the KSTP_Overlay binding from r6/input/kstp_inputs.xml, which requires Input Loader or REDmod.")
+  @runtimeProperty("ModSettings.displayValues.Always", "ALWAYS")
+  @runtimeProperty("ModSettings.displayValues.WhileAiming", "ONLY WHILE AIMING")
+  @runtimeProperty("ModSettings.displayValues.WhileKeyHeld", "ONLY WITH THE OVERLAY KEY")
+  @runtimeProperty("ModSettings.displayValues.Never", "NEVER")
+  public let Visibility: KSTPOverlayVisibility = KSTPOverlayVisibility.Always;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
-  @runtimeProperty("ModSettings.displayName", "Only while aiming")
-  @runtimeProperty("ModSettings.description", "Show the labels only while aiming down sights. Holding the overlay key overrides this and shows them from the hip as well.")
-  public let OnlyWhileADS: Bool = false;
-
-  @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
-  @runtimeProperty("ModSettings.displayName", "Only while the overlay key is held")
-  @runtimeProperty("ModSettings.description", "Hide the labels until the overlay key is pressed (hold or toggle, set in the keybindings group). Requires the KSTP_Overlay binding from r6/input/kstp_inputs.xml, which needs Input Loader or REDmod. If the key does nothing on your install, turn this back off.")
-  public let OnlyWhileHeld: Bool = false;
-
-  @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
+  @runtimeProperty("ModSettings.category", "Debug - IFF overlay")
+  @runtimeProperty("ModSettings.category.order", "910")
   @runtimeProperty("ModSettings.displayName", "Only label refused targets")
   @runtimeProperty("ModSettings.description", "Label only the targets the active protocol refuses. The overlay then stays quiet in a normal fight and marks the targets the protocol turns down. Refusals the installed coprocessor is too low a tier to enforce are labeled REFUSE* and are still shown.")
   public let OnlyRefused: Bool = false;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
+  @runtimeProperty("ModSettings.category", "Debug - IFF overlay")
+  @runtimeProperty("ModSettings.category.order", "910")
   @runtimeProperty("ModSettings.displayName", "Show distance")
   @runtimeProperty("ModSettings.description", "Append the range in meters, as the smart weapon reports it.")
   public let ShowDistance: Bool = false;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay")
-  @runtimeProperty("ModSettings.category.order", "10")
+  @runtimeProperty("ModSettings.category", "Debug - IFF overlay")
+  @runtimeProperty("ModSettings.category.order", "910")
   @runtimeProperty("ModSettings.displayName", "Show lock state")
   @runtimeProperty("ModSettings.description", "Append the tracking state: TRACK, LOCKING, LOCK or BREAK.")
   public let ShowLockState: Bool = true;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Label anchor")
   @runtimeProperty("ModSettings.description", "Which corner of the crosshair target holder the labels measure from. TOP-LEFT is correct on a standard HUD. Switch to CENTERED if labels land far from their targets.")
   @runtimeProperty("ModSettings.displayValues.HolderTopLeft", "TOP-LEFT")
@@ -110,8 +99,8 @@ public class KSTPOverlayConfig {
   public let AnchorMode: KSTPOverlayAnchorMode = KSTPOverlayAnchorMode.HolderTopLeft;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Horizontal offset")
   @runtimeProperty("ModSettings.step", "4.0")
   @runtimeProperty("ModSettings.min", "-400.0")
@@ -119,20 +108,18 @@ public class KSTPOverlayConfig {
   public let OffsetX: Float = 0.0;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Vertical offset")
   @runtimeProperty("ModSettings.step", "4.0")
   @runtimeProperty("ModSettings.min", "-400.0")
   @runtimeProperty("ModSettings.max", "400.0")
-  // Offset from the label's default position, which already sits above the target
-  // (see KSTP_LabelBaselineY). Redscript rejects a negated literal in a constant
-  // initializer, so the baseline lift is applied at the use site rather than here.
+  // Delta on top of KSTP_LabelBaselineY(), which already lifts the label above the target.
   public let OffsetY: Float = 0.0;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Font size")
   @runtimeProperty("ModSettings.step", "1")
   @runtimeProperty("ModSettings.min", "12")
@@ -140,8 +127,8 @@ public class KSTPOverlayConfig {
   public let FontSize: Int32 = 20;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Label background opacity")
   @runtimeProperty("ModSettings.step", "0.05")
   @runtimeProperty("ModSettings.min", "0.0")
@@ -149,8 +136,8 @@ public class KSTPOverlayConfig {
   public let BackgroundOpacity: Float = 0.55;
 
   @runtimeProperty("ModSettings.mod", "Kiroshi Targeting Protocol")
-  @runtimeProperty("ModSettings.category", "IFF overlay - layout")
-  @runtimeProperty("ModSettings.category.order", "11")
+  @runtimeProperty("ModSettings.category", "Debug - overlay layout")
+  @runtimeProperty("ModSettings.category.order", "920")
   @runtimeProperty("ModSettings.displayName", "Maximum labels on screen")
   @runtimeProperty("ModSettings.step", "1")
   @runtimeProperty("ModSettings.min", "1")
@@ -159,8 +146,21 @@ public class KSTPOverlayConfig {
 }
 
 // Hold-to-show channel. Input/Hotkeys.reds writes this flag and the overlay only reads it, so
-// neither module has to reference the other. Same idiom as Limited HUD's global toggle flag.
+// neither module has to reference the other.
 @addField(UI_SystemDef) public let KSTPOverlayHold: BlackboardID_Bool;
+
+// Current visibility mode as text, for the hotkey trace in Input/Hotkeys.reds. Reads the live
+// setting rather than a cached copy: the key can be pressed with no weapon drawn, when no overlay
+// instance exists.
+public func KSTP_OverlayVisibilityName() -> String {
+  switch new KSTPOverlayConfig().Visibility {
+    case KSTPOverlayVisibility.Always:       return "ALWAYS (key is not read)";
+    case KSTPOverlayVisibility.WhileAiming:  return "WHILE_AIMING (key overrides from the hip)";
+    case KSTPOverlayVisibility.WhileKeyHeld: return "WITH_KEY (key gates the overlay)";
+    case KSTPOverlayVisibility.Never:        return "NEVER (key is not read)";
+  }
+  return "UNKNOWN";
+}
 
 // ---------------------------------------------------------------------------
 // Presentation
@@ -168,19 +168,17 @@ public class KSTPOverlayConfig {
 
 enum KSTPVerdict {
   Permitted = 0,
-  // The protocol refuses this target and the refusal is being applied to it.
+  // Refused, and the refusal is being applied to the target.
   Refused = 1,
-  // Cyberware not installed or no smart weapon in hand. The protocol is not enforcing
-  // anything, so reporting a refusal would be wrong.
+  // Cyberware not installed or no smart weapon in hand: the protocol is enforcing nothing.
   Offline = 2,
-  // The protocol refuses this target but nothing acts on the refusal: the installed
-  // coprocessor is below KSTP_FactionAxisMinTier(), or KSTPGate.FactionAxisEnabled() is off.
-  // Enforcement/Faction.reds applies nothing in either state, so the label has to say so
-  // rather than promise a denial the gun will not honor. The target still classifies and
-  // colors, which is what makes the tier worth buying.
+  // Refused, but nothing acts on the refusal: the installed coprocessor is below
+  // KSTP_FactionAxisMinTier(), or KSTPGate.FactionAxisEnabled() is off. The target still
+  // classifies and colours.
   RefusedAdvisory = 3,
 }
 
+// Label text and colours. Stateless.
 public class KSTPIFFStyle {
 
   public static func ThreatLabel(t: KSTPThreatClass) -> String {
@@ -219,9 +217,8 @@ public class KSTPIFFStyle {
     return "SEEN";
   }
 
-  // The trailing asterisk on an advisory refusal is the whole distinction between a denial
-  // the gun will honor and one the protocol would make if the coprocessor could enforce it.
-  // Color carries the same split, so the mark never has to be read to be understood.
+  // The trailing asterisk marks a refusal the gun will not honour. Colour carries the same
+  // distinction, so the mark never has to be read to be understood.
   public static func VerdictLabel(v: KSTPVerdict) -> String {
     switch v {
       case KSTPVerdict.Permitted:       return "PERMIT";
@@ -231,15 +228,14 @@ public class KSTPIFFStyle {
     return "OFFLINE";
   }
 
-  // Both refusal kinds, for callers that filter on "would this target be refused" rather than
-  // on whether the refusal binds.
+  // True for both refusal kinds, for callers filtering on whether a target would be refused
+  // rather than on whether the refusal binds.
   public static func IsRefusal(v: KSTPVerdict) -> Bool {
     return Equals(v, KSTPVerdict.Refused) || Equals(v, KSTPVerdict.RefusedAdvisory);
   }
 
-  // Verdict drives the chip and the secondary line. The player must be able to read it without
-  // parsing any text, so it is the loudest signal on the label. Amber for the advisory refusal
-  // keeps it distinct from the red of an enforced one at a glance and from across a firefight.
+  // Tints the chip and the secondary line. Amber for the advisory refusal must stay readable
+  // against the red of an enforced one at a glance.
   public static func VerdictColor(v: KSTPVerdict) -> HDRColor {
     switch v {
       case KSTPVerdict.Permitted:       return new HDRColor(0.29, 0.94, 0.63, 1.0);
@@ -249,10 +245,9 @@ public class KSTPIFFStyle {
     return new HDRColor(0.62, 0.66, 0.72, 1.0);
   }
 
-  // Faction is the secondary signal and tints the affiliation line only, never the chip.
-  // Keyed on Affiliation_Record.EnumName() so mod-added factions fall through to the default
-  // instead of colliding with a compiled enum ordinal. Android variants share the parent
-  // faction's color; MaelstromAndroid is a separate affiliation value from Maelstrom.
+  // Tints the affiliation line only, never the chip. Keyed on Affiliation_Record.EnumName() so
+  // mod-added factions fall through to the default instead of colliding with a compiled enum
+  // ordinal. Android variants are separate affiliation values and repeat the parent's colour.
   public static func FactionColor(affiliation: CName) -> HDRColor {
     switch affiliation {
       case n"Arasaka":            return new HDRColor(0.94, 0.27, 0.31, 1.0);
@@ -290,6 +285,9 @@ public class KSTPIFFStyle {
 // One label
 // ---------------------------------------------------------------------------
 
+// One reusable label widget tree. Slots are recycled across targets: Resolve() rebinds a slot to
+// a different entity, Show() positions and fills it, Hide() leaves it built. Destroy() must be
+// passed the same parent the slot was created under.
 public class KSTPIFFLabel extends IScriptable {
 
   private let m_root: ref<inkCanvas>;
@@ -375,8 +373,8 @@ public class KSTPIFFLabel extends IScriptable {
     this.m_secondary.SetFontSize(Max(10, cfg.FontSize - 4));
   }
 
-  // Resolving an EntityID to a GameObject is the most expensive step per target, so the result
-  // is cached until the slot is handed a different entity.
+  // Resolves the entity behind the slot, cached until the slot is handed a different id. This is
+  // the most expensive step per target.
   public func Resolve(game: GameInstance, id: EntityID) -> wref<GameObject> {
     if this.m_boundTo == id && IsDefined(this.m_target) {
       return this.m_target;
@@ -389,8 +387,10 @@ public class KSTPIFFLabel extends IScriptable {
     return this.m_target;
   }
 
+  // Positions and fills the label. pos is the target's screen position as the smart-gun payload
+  // reports it.
   public func Show(pos: Vector2, cfg: ref<KSTPOverlayConfig>, primary: String, secondary: String, verdict: KSTPVerdict, affiliation: CName) -> Void {
-    // Same coordinate math vanilla uses for its own target brackets in this holder
+    // Half-scale, the coordinate math vanilla uses for its own target brackets in this holder
     // (crosshairController_Smart_Rifle.script:266, hud_panzer.script:326).
     this.m_root.SetMargin(new inkMargin(pos.X * 0.50 + cfg.OffsetX, pos.Y * 0.50 + KSTP_LabelBaselineY() + cfg.OffsetY, 0.0, 0.0));
 
@@ -433,6 +433,9 @@ public class KSTPIFFLabel extends IScriptable {
 // The overlay
 // ---------------------------------------------------------------------------
 
+// One overlay instance per smart crosshair. Owned by the host controller, which attaches it on
+// intro, drives it from OnSmartGunParams and detaches it on outro or uninitialize. Attach() is
+// idempotent and Detach() must run before the holder widget dies.
 public class KSTPIFFOverlay extends IScriptable {
 
   private let m_game: GameInstance;
@@ -440,8 +443,6 @@ public class KSTPIFFOverlay extends IScriptable {
   private let m_container: ref<inkCanvas>;
   private let m_slots: array<ref<KSTPIFFLabel>>;
 
-  private let m_weaponBlackboard: wref<IBlackboard>;
-  private let m_weaponListener: ref<CallbackHandle>;
   private let m_psmBlackboard: wref<IBlackboard>;
   private let m_uiSystemBlackboard: wref<IBlackboard>;
 
@@ -449,6 +450,12 @@ public class KSTPIFFOverlay extends IScriptable {
   private let m_configTicks: Int32;
   private let m_attached: Bool;
 
+  // Callback counter. Kept separate from m_configTicks, which Attach() resets and which reaches
+  // zero only once every 60 callbacks, so the first callback of a session is always reported.
+  private let m_tickCount: Int32;
+
+  // Builds the widget tree under holder and binds the blackboards the visibility test reads. No
+  // listener is registered: delivery comes from the host hooks at the bottom of this file.
   public func Attach(game: GameInstance, player: wref<GameObject>, holder: wref<inkCompoundWidget>) -> Void {
     if this.m_attached { return; }
     if !IsDefined(holder) || !IsDefined(player) { return; }
@@ -464,22 +471,19 @@ public class KSTPIFFOverlay extends IScriptable {
 
     this.BuildWidgets();
 
-    this.m_weaponBlackboard = bbSystem.Get(GetAllBlackboardDefs().UI_ActiveWeaponData);
-    if IsDefined(this.m_weaponBlackboard) {
-      this.m_weaponListener = this.m_weaponBlackboard.RegisterDelayedListenerVariant(GetAllBlackboardDefs().UI_ActiveWeaponData.SmartGunParams, this, n"OnKSTPSmartGunParams");
-    };
     this.m_attached = true;
+
+    KSTPLog.Info(s"overlay attached: \(ArraySize(this.m_slots)) label slot(s), visibility=\(KSTP_OverlayVisibilityName()), driven by the host controller's OnSmartGunParams");
   }
 
+  // Removes every widget this overlay created. Idempotent, and nothing else needs restoring.
   public func Detach() -> Void {
     if !this.m_attached { return; }
     this.m_attached = false;
 
-    if IsDefined(this.m_weaponBlackboard) && IsDefined(this.m_weaponListener) {
-      this.m_weaponBlackboard.UnregisterDelayedListener(GetAllBlackboardDefs().UI_ActiveWeaponData.SmartGunParams, this.m_weaponListener);
-    };
-    this.m_weaponListener = null;
-    this.m_weaponBlackboard = null;
+    KSTPLog.Info(s"overlay detached after \(this.m_tickCount) callback(s)");
+    this.m_tickCount = 0;
+
     this.m_psmBlackboard = null;
     this.m_uiSystemBlackboard = null;
 
@@ -487,14 +491,13 @@ public class KSTPIFFOverlay extends IScriptable {
     this.m_config = null;
   }
 
+  // The container is zero-size so its origin coincides with the holder's own child origin, the
+  // space vanilla's brackets measure in.
+  //
+  // UNVERIFIED: which corner of the target holder its bucket widgets anchor from lives in the
+  // .inkwidget resource, not in script, so it cannot be read off the 2.31 dump. TopLeft is the
+  // reading consistent with positive pos.X/pos.Y margins; AnchorMode exposes the alternative.
   private func BuildWidgets() -> Void {
-    // Zero-size canvas so its origin coincides with the holder's own child origin; every label
-    // below then measures in the same space vanilla's brackets do.
-    //
-    // UNVERIFIED: which corner of the target holder vanilla's bucket widgets anchor from lives
-    // in the .inkwidget resource, not in script, so it cannot be read off the 2.31 dump.
-    // TopLeft is the reading consistent with positive pos.X/pos.Y margins. AnchorMode lets the
-    // player flip it to Centered from Mod Settings if labels land half a screen away.
     let container: ref<inkCanvas> = new inkCanvas();
     container.SetName(n"KSTPIFFContainer");
     container.SetSize(0.0, 0.0);
@@ -545,9 +548,8 @@ public class KSTPIFFOverlay extends IScriptable {
     };
   }
 
-  // Mod Settings patches the class defaults, so a fresh instance carries the current values.
-  // Re-reading on every blackboard tick would allocate per frame; once every 60 ticks is
-  // enough for a settings menu round-trip.
+  // Re-reads the settings every 60 ticks, then restyles or rebuilds the slots when a value that
+  // shapes the widget tree has moved. Reading on every tick would allocate per frame.
   private func RefreshConfig() -> Void {
     this.m_configTicks += 1;
     if this.m_configTicks < 60 { return; }
@@ -585,26 +587,39 @@ public class KSTPIFFOverlay extends IScriptable {
     return Equals(state, gamePSMCrosshairStates.Aim);
   }
 
+  // True while the labels should be drawn. The hold flag reaches this through vanilla
+  // GameObject.RegisterInputListener (gameObject.script:152) with no framework involved, so it is
+  // honoured unconditionally; with no loader for r6/input/*.xml the binding never fires and the
+  // ALWAYS setting is the recovery.
   private func ShouldDraw() -> Bool {
-    if !this.m_config.Enabled { return false; }
-    let held: Bool = this.IsHoldActive();
-    // The hold flag is raised by Input/Hotkeys.reds through vanilla
-    // GameObject.RegisterInputListener (gameObject.script:152), with no framework involved, so
-    // it is honored unconditionally. Without a loader for r6/input/*.xml the binding never
-    // fires, which leaves the player with a missing keybind rather than a missing capability.
-    // The recovery is the one every other hold-to-show option offers: turn this setting off.
-    if this.m_config.OnlyWhileHeld && !held { return false; }
-    // Hold overrides the ADS restriction. A player asking for the overlay explicitly gets it
-    // from the hip as well.
-    if this.m_config.OnlyWhileADS && !held && !this.IsAimingDownSights() { return false; }
+    switch this.m_config.Visibility {
+      case KSTPOverlayVisibility.Never:        return false;
+      case KSTPOverlayVisibility.Always:       return true;
+      case KSTPOverlayVisibility.WhileKeyHeld: return this.IsHoldActive();
+      case KSTPOverlayVisibility.WhileAiming:  return this.IsHoldActive() || this.IsAimingDownSights();
+    }
     return true;
   }
 
-  protected cb func OnKSTPSmartGunParams(argParams: Variant) -> Bool {
+  // Draw pass for one smart-gun payload. Called directly by the host controller's wrap below, so
+  // it is a plain method rather than a `cb func`: nothing dispatches it through RTTI.
+  public func OnSmartGunParams(argParams: Variant) -> Bool {
     if !this.m_attached || !IsDefined(this.m_container) { return false; }
     this.RefreshConfig();
 
-    if !this.ShouldDraw() {
+    let draw: Bool = this.ShouldDraw();
+
+    this.m_tickCount += 1;
+    if (this.m_tickCount == 1 || this.m_tickCount % 60 == 0) && KSTPLog.DebugEnabled() {
+      let smartPeek: ref<smartGunUIParameters> = FromVariant<ref<smartGunUIParameters>>(argParams);
+      let count: Int32 = -1;
+      if IsDefined(smartPeek) {
+        count = ArraySize(smartPeek.targets);
+      };
+      KSTPLog.Debug(s"overlay tick #\(this.m_tickCount): visibility=\(KSTP_OverlayVisibilityName()) held=\(this.IsHoldActive()) ads=\(this.IsAimingDownSights()) draw=\(draw) gunTargets=\(count) slots=\(ArraySize(this.m_slots))");
+    };
+
+    if !draw {
       this.HideAll();
       return false;
     };
@@ -618,10 +633,8 @@ public class KSTPIFFOverlay extends IScriptable {
     let policy: ref<KSTPPolicySystem> = KSTPPolicySystem.Get(this.m_game);
     let protocol: ref<KSTPProtocol>;
     let armed: Bool = false;
-    // Whether a refusal reported below reaches the NPC. Enforcement/Faction.reds suppresses
-    // only while both halves hold: the gate says the mechanism works on this build, the
-    // installed tier says the coprocessor enforces the axis. Read once per tick, never per
-    // target: every KSTPGate accessor allocates a config object (Core/Gate.reds:110-111).
+    // Read once per tick, never per target: every KSTPGate accessor allocates a config object
+    // (Core/Gate.reds:110-111).
     let axisEnforced: Bool = false;
     if IsDefined(policy) {
       protocol = policy.GetActive();
@@ -648,6 +661,8 @@ public class KSTPIFFOverlay extends IScriptable {
     return false;
   }
 
+  // Fills one slot from one payload entry. Returns false when the slot was left untouched, so the
+  // caller reuses it for the next target.
   private func DrawTarget(slot: ref<KSTPIFFLabel>, data: smartGunUITargetParameters, protocol: ref<KSTPProtocol>, armed: Bool, axisEnforced: Bool) -> Bool {
     let target: wref<GameObject> = slot.Resolve(this.m_game, data.entityID);
     if !IsDefined(target) { return false; }
@@ -655,9 +670,6 @@ public class KSTPIFFOverlay extends IScriptable {
     let classification: ref<KSTPClassification> = KSTPClassifier.Classify(target);
     if !IsDefined(classification) { return false; }
 
-    // Classification runs at every tier. The verdict is the protocol's answer, and
-    // axisEnforced only decides which of the two refusal labels states it, so a player below
-    // KSTP_FactionAxisMinTier() sees exactly which targets the tier would refuse.
     let verdict: KSTPVerdict = KSTPVerdict.Offline;
     if armed && IsDefined(protocol) {
       if KSTPClassifier.Permits(protocol, classification) {
@@ -671,8 +683,7 @@ public class KSTPIFFOverlay extends IScriptable {
       };
     };
 
-    // Advisory refusals count here, or the filter would empty the overlay on the tiers where
-    // seeing the refusals is the only thing the feature can do.
+    // Advisory refusals pass this filter: below the enforcing tier they are all it can show.
     if this.m_config.OnlyRefused && !KSTPIFFStyle.IsRefusal(verdict) { return false; }
 
     let primary: String = classification.affiliationLabel;
@@ -700,11 +711,11 @@ public class KSTPIFFOverlay extends IScriptable {
 
 // ---------------------------------------------------------------------------
 // Host hooks
-//
-// CrosshairGameController_Smart_Rifl declares OnPreIntro/OnPreOutro itself
-// (crosshairController_Smart_Rifle.script:105/111), which is where vanilla registers and
-// unregisters its own SmartGunParams listener, so the overlay attaches and detaches there too.
 // ---------------------------------------------------------------------------
+
+// Attach and detach follow the lifetime of vanilla's own SmartGunParams listener, which
+// CrosshairGameController_Smart_Rifl registers and unregisters in OnPreIntro/OnPreOutro
+// (crosshairController_Smart_Rifle.script:105/111).
 
 @addField(CrosshairGameController_Smart_Rifl)
 public let kstpOverlay: ref<KSTPIFFOverlay>;
@@ -725,6 +736,28 @@ protected cb func OnPreIntro() -> Bool {
   };
 }
 
+// The delivery point for the whole mod. The host registers UI_ActiveWeaponData.SmartGunParams at
+// crosshairController_Smart_Rifle.script:67 and handles it at :91, so KSTP takes that delivery
+// rather than registering its own: a RegisterDelayedListener* from outside an ink game controller
+// never fires on 2.31, because the delayed queue is drained by the UI traversal that services
+// those controllers, and every call site in the dump sits on one.
+// CrosshairGameController_BlackwallForce calls super.OnSmartGunParams
+// (crosshairController_Blackwall.script:11-15), so wrapping the base covers that crosshair too.
+@wrapMethod(CrosshairGameController_Smart_Rifl)
+protected cb func OnSmartGunParams(argParams: Variant) -> Bool {
+  let handled: Bool = wrappedMethod(argParams);
+
+  if IsDefined(this.kstpOverlay) {
+    this.kstpOverlay.OnSmartGunParams(argParams);
+  };
+
+  // params.targets carries entries while their lock is still forming, and a time-to-lock modifier
+  // can only prevent a lock that has not completed (ADR 0003).
+  KSTP_PushSmartGunParams(this.GetGame(), argParams);
+
+  return handled;
+}
+
 @wrapMethod(CrosshairGameController_Smart_Rifl)
 protected cb func OnPreOutro() -> Bool {
   if IsDefined(this.kstpOverlay) {
@@ -736,9 +769,9 @@ protected cb func OnPreOutro() -> Bool {
 }
 
 // Safety net. Vanilla unregisters its own SmartGunParams listener in OnPreOutro only, so a
-// controller torn down without an outro (HUD rebuild, save load) would leave the overlay's
-// blackboard callback registered against a dead widget tree. OnUninitialize is declared on the
-// base (crosshairBaseControllers.script:68), so the hook lives there and downcasts.
+// controller torn down without an outro (HUD rebuild, save load) would leave the overlay bound to
+// a dead widget tree. OnUninitialize is declared on the base
+// (crosshairBaseControllers.script:68), so the hook lives there and downcasts.
 @wrapMethod(gameuiCrosshairBaseGameController)
 protected cb func OnUninitialize() -> Bool {
   let smartCrosshair: ref<CrosshairGameController_Smart_Rifl> = this as CrosshairGameController_Smart_Rifl;

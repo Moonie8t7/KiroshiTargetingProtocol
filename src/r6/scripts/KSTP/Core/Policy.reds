@@ -1,52 +1,28 @@
-// Kiroshi Smart Targeting Protocol: the active protocol and its lifecycle.
-//
-// This system owns three things:
-//   1. the six shipped presets,
-//   2. which one is active (persisted into the save),
-//   3. whether the mod is currently "armed", meaning KSTP cyberware installed and a
-//      smart weapon in the right hand.
-//
-// Whenever (2) or (3) changes it pushes the result into Enforcement/BodyPart.reds.
-// It never touches the weapon or any NPC itself; the stat side lives entirely in
-// Enforcement, so the restore-what-you-mutate rule has exactly one owner.
+// Kiroshi Smart Targeting Protocol: the six shipped presets, the persisted active selection,
+// and the armed state (KSTP coprocessor installed, smart weapon in the right hand). Every
+// accepted change is pushed into KSTP.Enforcement, which owns all weapon and NPC state and
+// its restore; nothing here mutates either. Depends on the TweakDB records authored by
+// src/r6/tweaks/KSTP/cyberware.yaml. See ADR 0007 (tier ladder), ADR 0009 (settings are the
+// contract).
 
 module KSTP.Core
 
-// Enforcement is a sibling module. Guarded so that a load order where Enforcement
-// failed to compile degrades to "policy is tracked but not applied" instead of
-// taking this file down with it (CONTRACT hard rule 5; idiom copied from
-// Custom Map Markers CustomMarkerSystem.reds:6-7).
+// Soft dependency (CONTRACT hard rule 5): a load order where Enforcement failed to compile
+// degrades to policy tracked but not applied. Idiom from Custom Map Markers
+// CustomMarkerSystem.reds:6-7.
 @if(ModuleExists("KSTP.Enforcement"))
 import KSTP.Enforcement.*
 
-// ---------------------------------------------------------------------------
-// Identity of the mod's own cyberware.
+// Quality tier of the installed coprocessor: 1 to 5, or 0 when none is equipped. Plus grades
+// count as their base tier, matching how the game presents them.
 //
-// The implant ships as eleven quality tiers, matching the vanilla cyberware ladder
-// (tier 1 through 5++). Each is its own TweakDB record, authored by
-// src/r6/tweaks/KSTP/cyberware.yaml. Every record name is written down here and
-// nowhere else in script.
+// Every literal below must name a record authored in src/r6/tweaks/KSTP/cyberware.yaml. A
+// TweakDBID literal is a compile-time hash and does not require the record to exist, so a
+// typo produces no diagnostic: it returns 0 for that tier, makes IsArmed() false, and leaves
+// the mod silently inert. Renaming a record in the yaml means editing the matching line here.
 //
-// EVERY LITERAL BELOW MUST MATCH A RECORD AUTHORED IN cyberware.yaml EXACTLY. A
-// TweakDBID literal is a compile-time hash and does not require the record to exist,
-// so a typo produces no diagnostic of any kind: it makes KSTP_CyberwareTier() return
-// 0 for that tier, IsArmed() false, and the mod silently inert for anyone wearing it.
-// Renaming a record in the yaml means editing the matching line here.
-//
-// Tier drives progression:
-//   1  head tracking
-//   2  + weak spot
-//   3  + breach, and the faction axis becomes enforceable
-//   4  + vehicle
-//   5  all classes, and permitted classes lock faster
-//
-// The unlocks themselves are data, applied by the per-tier stat group each record
-// points at. This mapping exists so script can gate the faction axis, which is
-// behavior rather than a stat.
-// ---------------------------------------------------------------------------
-
-// Quality tier of the installed coprocessor: 1 to 5, or 0 when none is equipped.
-// Plus grades count as their base tier, matching how the game presents them.
+// Tier buys target-class coverage only; the unlocks are data, applied by the per-tier stat
+// group each record points at. The faction axis is not tier-gated (ADR 0009).
 public func KSTP_CyberwareTierOf(id: ItemID) -> Int32 {
   if !ItemID.IsValid(id) {
     return 0;
@@ -75,18 +51,9 @@ public func KSTP_CyberwareTierOf(id: ItemID) -> Int32 {
   return 0;
 }
 
-// Tier at which the faction and threat-class axis starts being enforced. Below this
-// the overlay still classifies and colors every target, so the feature is visible and
-// legible before it is available, which is what makes the upgrade worth buying.
-public func KSTP_FactionAxisMinTier() -> Int32 = 3
-
-// ---------------------------------------------------------------------------
-// Free helpers, usable from any module without going through the system.
-// ---------------------------------------------------------------------------
-
-// The game's own smart-weapon test, copied from
-// cyberpunk/player/psm/vehicleTransition.script:2424-2429 (EnableSmartGunHandler),
-// with the null checks vanilla omits because it controls its own call site.
+// True while the right-hand weapon is a smart weapon. The game's own test, copied from
+// cyberpunk/player/psm/vehicleTransition.script:2424-2429 (EnableSmartGunHandler), with the
+// null checks vanilla omits because it controls its own call site.
 public func KSTP_IsHoldingSmartWeapon(owner: wref<GameObject>) -> Bool {
   if !IsDefined(owner) {
     return false;
@@ -110,14 +77,13 @@ public func KSTP_IsHoldingSmartWeapon(owner: wref<GameObject>) -> Bool {
   return Equals(evolution.Type(), gamedataWeaponEvolution.Smart);
 }
 
-// Walks every cyberware equipment area and returns the tier of the installed
-// coprocessor, or 0 when none is equipped. Compares TweakDBIDs rather than ItemIDs:
-// EquipmentSystemPlayerData.IsEquipped() matches on the whole ItemID including its seed
-// (equipmentSystem.script:2467-2487), and the seed of an item the player acquired at a
-// ripperdoc is not knowable here.
+// Highest coprocessor tier across every cyberware equipment area, or 0 when none is equipped.
+// At most one matches in practice, since two coprocessors share a cyberwareType and cannot
+// both be equipped.
 //
-// Returns the highest tier found. Two coprocessors cannot both be equipped, since they
-// share a cyberwareType, so in practice at most one matches.
+// Compares TweakDBIDs rather than ItemIDs: EquipmentSystemPlayerData.IsEquipped() matches on
+// the whole ItemID including its seed (equipmentSystem.script:2467-2487), and the seed of an
+// item the player acquired at a ripperdoc is not knowable here.
 public func KSTP_CyberwareTier(owner: wref<GameObject>) -> Int32 {
   if !IsDefined(owner) {
     return 0;
@@ -147,14 +113,13 @@ public func KSTP_CyberwareTier(owner: wref<GameObject>) -> Int32 {
   return best;
 }
 
-// Retained so callers that only need presence read clearly.
 public func KSTP_HasCyberwareInstalled(owner: wref<GameObject>) -> Bool {
   return KSTP_CyberwareTier(owner) > 0;
 }
 
-// True when a protocol asks for nothing the vanilla weapon does not already do.
-// Enforcement can use this to skip applying modifiers entirely, which is how AUTO
-// stays byte-for-byte vanilla.
+// True when a protocol asks for nothing the vanilla weapon does not already do. Enforcement
+// uses this to skip applying modifiers entirely, which is how AUTO stays byte-for-byte
+// vanilla.
 public func KSTP_ProtocolIsVanilla(p: ref<KSTPProtocol>) -> Bool {
   if !IsDefined(p) {
     return true;
@@ -172,34 +137,33 @@ public func KSTP_ProtocolIsVanilla(p: ref<KSTPProtocol>) -> Bool {
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// The system
-// ---------------------------------------------------------------------------
-
+// Owns the preset list, the active selection and the armed state, and pushes every accepted
+// change into Enforcement. GetActive() and IsArmed() are safe to call at any point in the
+// lifecycle: before attach they report the inert state rather than failing.
 public class KSTPPolicySystem extends ScriptableSystem {
 
-  // The only thing that belongs in the save. Presets are rebuilt from code every
-  // session so a mod update can change what PRECISION means without migrating saves.
+  // The only field that belongs in the save. Presets are rebuilt from code every session, so
+  // a mod update can change what PRECISION means without migrating saves.
   private persistent let m_activeProtocolId: Int32 = 0;
 
   private let m_protocols: array<ref<KSTPProtocol>>;
   private let m_player: wref<PlayerPuppet>;
 
-  // Installed cyberware changes only at a ripperdoc, so it is cached and refreshed
-  // on the equipment hooks below. The held weapon changes constantly and is read live.
+  // Cached: installed cyberware changes only at a ripperdoc, and is refreshed on the loadout
+  // hooks. The held weapon changes constantly and is read live.
   private let m_cyberwareTier: Int32;
 
   private let m_initialized: Bool;
 
-  // Last state actually pushed into Enforcement. m_appliedValid stays false until the
-  // first push, so no logic depends on a non-zero field default surviving engine-side
-  // construction of a native-derived system.
+  // Last state actually pushed into Enforcement. m_appliedValid stays false until the first
+  // push, so no logic depends on a non-zero field default surviving engine-side construction
+  // of a native-derived system.
   private let m_appliedValid: Bool;
   private let m_appliedArmed: Bool;
   private let m_appliedProtocolId: Int32;
 
-  // Bumped on every accepted change. Other modules (Faction, Overlay) can poll this
-  // to notice a switch without subscribing to anything.
+  // Bumped on every accepted change. Faction and Overlay poll this to notice a switch instead
+  // of subscribing.
   private let m_generation: Int32;
 
   public static func Get(gi: GameInstance) -> ref<KSTPPolicySystem> {
@@ -209,10 +173,8 @@ public class KSTPPolicySystem extends ScriptableSystem {
   // -- Lifecycle --------------------------------------------------------------
 
   private final func OnPlayerAttach(request: ref<PlayerAttachRequest>) -> Void {
-    // No pre-game guard is needed: in the main menu there is no local player, and the
-    // null check below already leaves the system inert. GameInstance has no
-    // GetSystemRequestsHandler() in the 2.31 dump, so the corpus's usual pre-game test
-    // is unavailable here anyway.
+    // GameInstance has no GetSystemRequestsHandler() in the 2.31 dump, so the corpus's usual
+    // pre-game test is unavailable; the null check below is the guard.
     this.m_player = GameInstance.GetPlayerSystem(request.owner.GetGame()).GetLocalPlayerMainGameObject() as PlayerPuppet;
     if !IsDefined(this.m_player) {
       KSTPLog.Warn("Player unavailable on attach; targeting protocol stays inert.");
@@ -228,9 +190,9 @@ public class KSTPPolicySystem extends ScriptableSystem {
     this.Reapply("attach", false);
   }
 
+  // Everything applied to the weapon comes off here: stat modifiers on a world entity have no
+  // save/restore path of their own (CONTRACT hard rule 4).
   private final func OnPlayerDetach(request: ref<PlayerDetachRequest>) -> Void {
-    // Everything applied to the weapon has to come off here. Stat modifiers on a world
-    // entity have no save/restore path of their own (CONTRACT hard rule 4).
     this.m_initialized = false;
     this.ClearEnforcement();
     this.m_appliedValid = false;
@@ -240,9 +202,9 @@ public class KSTPPolicySystem extends ScriptableSystem {
     this.m_player = null;
   }
 
+  // The persisted id came from whatever build wrote the save; a preset may have been removed
+  // since.
   private func OnRestored(saveVersion: Int32, gameVersion: Int32) -> Void {
-    // The persisted id came from whatever build wrote the save; a preset may have
-    // been removed since.
     this.EnsureProtocols();
     this.ClampActiveId();
   }
@@ -300,8 +262,8 @@ public class KSTPPolicySystem extends ScriptableSystem {
 
   // -- Change notifications ---------------------------------------------------
 
-  // Called by the equipment hooks at the bottom of this file. Also safe to call from
-  // anywhere else that suspects the loadout moved.
+  // Re-reads installed cyberware and reapplies. Called by the loadout hooks at the bottom of
+  // this file, and safe to call from anywhere else that suspects the loadout moved.
   public func NotifyLoadoutChanged() -> Void {
     if !this.m_initialized {
       return;
@@ -310,17 +272,10 @@ public class KSTPPolicySystem extends ScriptableSystem {
     this.Reapply("loadout", false);
   }
 
-  // Gates and settings live outside the save, so they can change while the world is
-  // loaded. UI/Settings.reds calls this once it has reconciled the menu onto the presets.
-  //
-  // The push is forced. Reapply()'s normal guard keys on (armed, protocolId) and a
-  // settings edit moves neither: UI/Settings.reds KSTPSettings.ApplyTo rewrites the
-  // active KSTPProtocol in place (allowedClasses, lockPolicy, multiEntityADS,
-  // factionFilterEnabled, allowedAffiliations) and leaves its id alone. Without the force
-  // flag the guard swallows the push, and an unticked class or a STRICT/PREFERRED flip
-  // does nothing until the player holsters and redraws. Enforcement clears before it
-  // applies, so a forced push on an unchanged menu close costs one remove/re-add of the
-  // same modifiers and changes no state.
+  // Called by UI/Settings.reds once it has reconciled the menu onto the presets. The push is
+  // forced because a settings edit rewrites the active KSTPProtocol in place and leaves its id
+  // alone, which Reapply()'s (armed, protocolId) guard would otherwise swallow. Enforcement
+  // clears before it applies, so a forced push on an unchanged menu close changes no state.
   public func OnSettingsChanged() -> Void {
     if !this.m_initialized {
       return;
@@ -332,32 +287,25 @@ public class KSTPPolicySystem extends ScriptableSystem {
     return this.m_generation;
   }
 
-  // Quality tier of the equipped coprocessor, 1 to 5, or 0 when none is installed.
-  // Cached and refreshed on the equipment hooks rather than read live, because
-  // cyberware only changes at a ripperdoc.
+  // Quality tier of the equipped coprocessor, 1 to 5, or 0 when none is installed. Cached and
+  // refreshed on the loadout hooks rather than read live.
   public func GetCyberwareTier() -> Int32 {
     return this.m_cyberwareTier;
   }
 
-  // Whether the installed tier is high enough to enforce the faction and threat-class
-  // axis. Below the threshold the overlay still classifies and colors targets, so the
-  // player can see what a protocol would refuse before owning the tier that refuses it.
-  //
-  // Separate from KSTPGate.FactionAxisEnabled(), which records whether the mechanism
-  // works on this build at all. Both must be true for a target to be suppressed.
+  // Whether the faction axis can act. Any installed tier qualifies (ADR 0009). Separate from
+  // KSTPGate.FactionAxisEnabled(), which records whether the mechanism works on this build;
+  // both must be true for a target to be suppressed.
   public func FactionAxisAvailable() -> Bool {
-    return this.m_cyberwareTier >= KSTP_FactionAxisMinTier();
+    return this.m_cyberwareTier > 0;
   }
 
   // -- Internals --------------------------------------------------------------
 
-  // Idempotent by default: pushes to Enforcement only when the (armed, protocol) pair
-  // actually moved, so callers may fire this as often as they like. Never stacks
-  // modifiers, because Enforcement clears before it applies.
-  //
-  // `force` skips that guard. The (armed, protocolId) pair is an incomplete description
-  // of what Enforcement consumes: the contents of the active KSTPProtocol can be
-  // rewritten in place by the settings screen while its id stays the same. Any caller
+  // Idempotent unless `force`: pushes to Enforcement only when the (armed, protocolId) pair
+  // moved, so callers may fire this as often as they like without stacking modifiers. That
+  // pair is an incomplete description of what Enforcement consumes, because the contents of
+  // the active KSTPProtocol can be rewritten in place while its id stays the same; any caller
   // that has mutated a protocol rather than switched to a different one must pass true.
   private final func Reapply(reason: String, force: Bool) -> Void {
     if !this.m_initialized {
@@ -375,11 +323,8 @@ public class KSTPPolicySystem extends ScriptableSystem {
     this.m_appliedProtocolId = id;
     this.m_generation += 1;
 
-    // Info rather than Debug: this fires only on attach, protocol switch, loadout change
-    // and settings close, and it is the line a bug report needs. `armed` decides whether
-    // the proactive half of enforcement runs at all, and a report showing armed=false
-    // after a settings close points at the weapon not counting as in-hand while the pause
-    // menu is open.
+    // Info is safe only because this fires on attach, protocol switch, loadout change and
+    // settings close, and nowhere else.
     KSTPLog.Info(s"reapply(\(reason)): armed=\(armed) protocol=\(this.GetActive().displayName)");
 
     if armed {
@@ -392,15 +337,11 @@ public class KSTPPolicySystem extends ScriptableSystem {
   @if(ModuleExists("KSTP.Enforcement"))
   private final func ApplyEnforcement(p: ref<KSTPProtocol>) -> Void {
     KSTPBodyPart.Apply(this.GetGameInstance(), p);
-    // The faction axis is the second half of enforcement and has to be driven from the
-    // same place, or it never releases. KSTPFaction.Reevaluate() (Faction.reds:73) is
-    // callable with the gate off: in that state it calls ReleaseAll() instead of
-    // returning early. Calling it unconditionally here is what strips the
-    // SmartGunTimeToLock* modifiers back off every suppressed NPC when the player turns
-    // E-STAT off mid-session or switches to a protocol without faction filtering
-    // (CONTRACT hard rule 4). It reads the active protocol and IsArmed() back off this
-    // system, so it must run after m_applied* have been updated; Reapply() guarantees
-    // that ordering.
+    // Called unconditionally: KSTPFaction.Reevaluate() (Faction.reds:73) calls ReleaseAll()
+    // with the gate off rather than returning early, which is what strips the
+    // SmartGunTimeToLock* modifiers back off suppressed NPCs when E-STAT goes off mid-session
+    // or the protocol drops faction filtering (CONTRACT hard rule 4). It reads the active
+    // protocol and IsArmed() back off this system, so it must run after m_applied* update.
     KSTPFaction.Reevaluate(this.GetGameInstance());
   }
 
@@ -412,11 +353,10 @@ public class KSTPPolicySystem extends ScriptableSystem {
   @if(ModuleExists("KSTP.Enforcement"))
   private final func ClearEnforcement() -> Void {
     KSTPBodyPart.Clear(this.GetGameInstance());
-    // Teardown path. KSTPFaction.ClearAll() (Faction.reds:92) is ungated on purpose and
-    // is a no-op when nothing is held, so the unarmed branch of Reapply() and
-    // OnPlayerDetach both route through here. Without it, unequipping the cyberware or
-    // holstering the smart weapon strands up to seven x1000 lock-time multipliers on
-    // every suppressed NPC for the rest of the session.
+    // KSTPFaction.ClearAll() (Faction.reds:92) is ungated and a no-op when nothing is held, so
+    // the unarmed branch of Reapply() and OnPlayerDetach both route through here. Without it,
+    // unequipping the cyberware or holstering strands up to seven x1000 lock-time multipliers
+    // on every suppressed NPC for the rest of the session.
     KSTPFaction.ClearAll(this.GetGameInstance());
   }
 
@@ -443,6 +383,8 @@ public class KSTPPolicySystem extends ScriptableSystem {
     };
   }
 
+  // Builds the six shipped presets on first use. Ids are persisted in the save, so an id must
+  // not be reused for a different preset.
   private final func EnsureProtocols() -> Void {
     if ArraySize(this.m_protocols) > 0 {
       return;
@@ -458,8 +400,8 @@ public class KSTPPolicySystem extends ScriptableSystem {
     auto.allowCivilians = true;
     ArrayPush(this.m_protocols, auto);
 
-    // PRECISION: bias hard toward head and weak spots. The rest stay lockable, so a
-    // target the optics cannot headshot can still be engaged.
+    // PRECISION: head and weak spots. Preferred rather than strict, so a target the optics
+    // cannot headshot is still lockable.
     ArrayPush(this.m_protocols, this.Compose(1, "PRECISION",
       true, false, false, true, false, false, false, KSTPLockPolicy.Preferred));
 
@@ -467,25 +409,18 @@ public class KSTPPolicySystem extends ScriptableSystem {
     ArrayPush(this.m_protocols, this.Compose(2, "CRIPPLE",
       false, false, true, false, false, false, false, KSTPLockPolicy.Strict));
 
-    // ANTI-MACHINE: mechanical and vehicle, per CONTRACT. Breach is left off because the
-    // contract lists it as its own class, and folding it in here would reinterpret the
-    // spec rather than implement it.
+    // ANTI-MACHINE: mechanical and vehicle, per CONTRACT. Breach is its own class in the
+    // contract and is not folded in here.
     //
-    // KNOWN ISSUE on 2.31: ANTI-MACHINE locks the chest of a human rather than refusing
-    // the target. Every class a human carries is off in this preset, and the handler
-    // falls back to a raw slot when no candidate component is enabled
-    // (weapon.script:1526). SURGICAL leaves humans with no enabled class too and does not
-    // fall back, so the fallback is not a pure function of the enabled set.
-    //
-    // The fix is architectural rather than a change of flags here. Which targets may be
-    // engaged is the faction and threat axis, which is per-candidate; the body-part
-    // classes only decide where on an already-valid target the lock lands. A threat-class
-    // filter on KSTPProtocol would express ANTI-MACHINE correctly and does not exist yet.
+    // KNOWN ISSUE on 2.31: against a human every enabled class is off, and the handler falls
+    // back to a raw slot rather than refusing the target (weapon.script:1526), so the lock
+    // lands on the chest. SURGICAL leaves humans with no enabled class too and does not fall
+    // back, so the fallback is not a pure function of the enabled set. The fix is a threat-
+    // class filter on KSTPProtocol, which does not exist yet: see ADR 0006 and ADR 0011.
     ArrayPush(this.m_protocols, this.Compose(3, "ANTI-MACHINE",
       false, false, false, false, true, false, true, KSTPLockPolicy.Strict));
 
-    // ORGANIC: everything except mechanical and vehicle, so drones and parked cars stop
-    // eating locks in a crowd fight.
+    // ORGANIC: everything except mechanical and vehicle.
     ArrayPush(this.m_protocols, this.Compose(4, "ORGANIC",
       true, true, true, true, false, true, false, KSTPLockPolicy.Strict));
 
@@ -506,22 +441,19 @@ public class KSTPPolicySystem extends ScriptableSystem {
     p.SetAllows(KSTPTargetClass.Breach, breach);
     p.SetAllows(KSTPTargetClass.Vehicle, vehicle);
     p.lockPolicy = policy;
-    // Faction axis stays off on every shipped preset. It is opt-in through
-    // UI/Settings.reds and enforced only while KSTPGate.FactionAxisEnabled().
+    // Faction axis stays off on every shipped preset: it is opt-in through UI/Settings.reds
+    // and enforced only while KSTPGate.FactionAxisEnabled().
     p.factionFilterEnabled = false;
-    // multiEntityADS stays at -1 (vanilla). SmartGunTrackMultipleEntitiesInADS is
-    // exposed on the settings screen, so a preset does not set it.
+    // multiEntityADS stays at -1 (vanilla). SmartGunTrackMultipleEntitiesInADS is owned by the
+    // settings screen, so a preset does not set it.
     return p;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Loadout hooks
-//
-// IsArmed() depends on the right-hand weapon and on installed cyberware. These are the
-// vanilla entry points that fire when either moves. All are @wrapMethod: redscript
-// chains multiple wraps of one method, so these coexist with other mods.
-// ---------------------------------------------------------------------------
+// -- Loadout hooks --
+// IsArmed() depends on the right-hand weapon and on installed cyberware. The wraps below are
+// the vanilla entry points that fire when either moves; redscript chains @wrapMethod, so they
+// coexist with other mods (ADR 0002).
 
 public func KSTP_NotifyLoadoutChanged(owner: wref<GameObject>) -> Void {
   if !IsDefined(owner) || !owner.IsPlayer() {
@@ -553,8 +485,8 @@ protected cb func OnItemRemovedFromSlot(evt: ref<ItemRemovedFromSlot>) -> Bool {
   return result;
 }
 
-// equipmentSystem.script:4778 and :4783. Cyberware produces no weapon-slot event, so
-// the ripperdoc path needs its own hook.
+// equipmentSystem.script:4778 and :4783. Cyberware produces no weapon-slot event, so the
+// ripperdoc path needs its own hook.
 @wrapMethod(EquipmentSystem)
 private final func OnInstallCyberwareRequest(request: ref<InstallCyberwareRequest>) -> Void {
   wrappedMethod(request);
@@ -567,5 +499,5 @@ private final func OnUninstallCyberwareRequest(request: ref<UninstallCyberwareRe
   KSTP_NotifyLoadoutChanged(request.owner);
 }
 
-// The settings-close signal is owned by UI/Settings.reds, which reconciles the menu onto
-// the presets before calling OnSettingsChanged(). This file must not hook it as well.
+// The settings-close signal is owned by UI/Settings.reds, which reconciles the menu onto the
+// presets before calling OnSettingsChanged(). This file must not hook it as well.
