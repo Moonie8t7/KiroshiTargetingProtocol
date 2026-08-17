@@ -5,6 +5,11 @@
 Accepted. Partly supersedes [0006](0006-body-part-classes-cannot-exclude-targets.md) and corrects
 [0009](0009-settings-are-the-contract.md).
 
+The vehicle decision below is superseded by
+[0013](0013-each-axis-enforces-its-own-question.md): routing vehicle refusal onto the faction axis
+was measured not to work, and exclusion is enforced by the class mask instead. The overlay
+visibility decision stands.
+
 ## Context
 
 [0009](0009-settings-are-the-contract.md) states the rule: if a control is shown, it applies. It

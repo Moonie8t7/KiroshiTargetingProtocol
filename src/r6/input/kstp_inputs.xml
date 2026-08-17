@@ -10,8 +10,9 @@
   src/r6/scripts/KSTP/UI/Settings.reds. That match is what lets Mod Settings rebind
   these keys.
 
-  Consumed by src/r6/scripts/KSTP/Input/Hotkeys.reds. Without an input loader the actions
-  never fire, and the mod stays fully usable from the settings menu.
+  Consumed by src/r6/scripts/KSTP/Input/Hotkeys.reds. Without an input loader the actions never
+  fire: protocol selection stays available from the settings menu, and the two overlay
+  visibility modes that read the overlay key have no way to raise it.
 -->
 <bindings>
     <!-- inputContexts -->
@@ -20,9 +21,11 @@
         <action name="KSTP_Overlay" map="KSTP_Overlay_Button" />
     </context>
 
-    <!-- Exploration is the base gameplay context and stays active with a weapon drawn and
-         while aiming, which is exactly when these bindings need to work. VehicleDrive is
-         included because smart weapons are usable from a vehicle. -->
+    <!-- Exploration is the base gameplay context, and vanilla's Aiming and Vision contexts
+         include it, so an action appended here also fires with a weapon drawn, down sights and
+         in focus mode. VehicleDrive covers driving; the driver-combat contexts build on
+         BaseVehicleDriverCombat and include neither Exploration nor VehicleDrive, so a weapon
+         drawn in a vehicle is outside both appends. -->
     <context name="Exploration" append="true">
         <include name="KSTP" />
     </context>
@@ -45,8 +48,8 @@
     <!-- inputUserMapping
 
       Defaults are the bracket keys rather than letter keys. Vanilla
-      r6/config/inputUserMappings.xml binds every letter IK_A..IK_Z across its contexts, so
-      any letter default collides with a vanilla action or with another mod's bindings.
+      r6/config/inputUserMappings.xml binds every letter IK_A..IK_Z to a mapping, so any letter
+      default collides with a vanilla action or with another mod's bindings.
 
       The brackets are free in vanilla and across the mod input files in the reference
       corpus, sit adjacent so they read as a pair, and avoid IK_F12 (screenshot key on most

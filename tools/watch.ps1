@@ -117,7 +117,9 @@ if ($WatchRoots.Count -eq 0) {
     throw "Nothing to watch: neither 'src' nor 'experiments\cet' exists under '$ProjectRoot'."
 }
 
-# Only these extensions are deployable. Everything else is editor noise.
+# The extensions that trigger a redeploy. deploy.ps1 copies every file in a mapped tree that
+# is not an editor dropping, so a change to any other type - the lab's README.md, for one -
+# waits for the next deploy rather than starting one.
 $WatchExtensions = @('.reds', '.lua', '.yaml', '.yml', '.xl', '.xml', '.json', '.archive', '.toml', '.txt')
 $IgnoreFragments = @('\.git\', '\node_modules\', '\.vs\', '\.idea\')
 

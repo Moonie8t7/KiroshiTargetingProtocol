@@ -18,16 +18,20 @@
     Deploys Kiroshi Smart Targeting Protocol (KSTP) into a Cyberpunk 2077 install.
 
 .DESCRIPTION
-    Copies the three deployable trees of this project into the game directory,
+    Copies the deployable trees of this project into the game directory,
     preserving structure:
 
         src\r6                     ->  <game>\r6
         src\archive                ->  <game>\archive     (excluding src\archive\source)
         experiments\cet\kstp_lab   ->  <game>\bin\x64\plugins\cyber_engine_tweaks\mods\kstp_lab
 
-    src\archive\source is WolvenKit CR2W build input. The game cannot read it, so
-    the archive mapping excludes it. The whole archive mapping is optional: if
-    src\archive is missing or empty the deploy reports that and carries on.
+    src\r6 carries the redscript, the TweakXL tweaks, the Input Loader XML and the
+    redsUserHints config. KSTP ships no .archive and no .xl, since its display strings
+    are registered from script (ADR 0008), so src\archive is absent as the project
+    stands and its mapping deploys nothing; it is kept for a build that produces one.
+    Where that tree does exist, src\archive\source is WolvenKit CR2W build input the
+    game cannot read, so the mapping excludes it. The whole archive mapping is optional:
+    if src\archive is missing or empty the deploy reports that and carries on.
 
     The target install is resolved from -GamePath, then $env:KSTP_GAME_PATH, then
     the $DefaultGamePath value near the top of this script. That default is a
@@ -50,8 +54,9 @@
         would deploy, are candidates for removal
       - a candidate path that resolves outside the game root aborts the run
       - a directory is pruned only when it is at least two segments deep, carries a
-        KSTP or kstp_lab path segment, is not a vanilla or framework directory, is
-        not a junction or symlink, and is empty
+        KSTP or kstp_lab path segment or is one of the legacy archive\source
+        directories, is not a vanilla or framework directory, is not a junction or
+        symlink, and is empty
       - directory removal goes through [System.IO.Directory]::Delete(path, $false),
         which throws on a non-empty directory rather than recursing
     Combine with -WhatIf to list every removal without performing one.
@@ -278,7 +283,7 @@ Write-KSTPPolicyHint 'tools\deploy.ps1'
 
 $mappings = @(
     [pscustomobject]@{
-        Name       = 'redscript + tweaks + input'
+        Name       = 'redscript + tweaks + input + config'
         Source     = Join-Path $ProjectRoot 'src\r6'
         Dest       = Join-Path $GamePath 'r6'
         Required   = $true
@@ -289,9 +294,11 @@ $mappings = @(
         Source     = Join-Path $ProjectRoot 'src\archive'
         Dest       = Join-Path $GamePath 'archive'
         Required   = $false
-        # src\archive\source is the WolvenKit project: raw CR2W and .json.json build
-        # input that only WolvenKit reads. Only the packed side of src\archive
-        # (pc\mod\*.xl, and a .archive if one is ever produced) is deployable.
+        # No src\archive tree is shipped: display strings are registered from script
+        # rather than packed (ADR 0008), so this mapping currently deploys nothing.
+        # Where one is built, src\archive\source is the WolvenKit project - raw CR2W and
+        # .json.json build input that only WolvenKit reads - and only the packed side of
+        # src\archive (pc\mod\*.xl, and a .archive if one is ever produced) is deployable.
         ExcludeRel = @('source')
     }
     [pscustomobject]@{

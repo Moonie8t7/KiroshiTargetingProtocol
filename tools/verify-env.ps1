@@ -203,9 +203,11 @@ $frameworks = @(
         Marker   = 'red4ext\plugins\ArchiveXL\ArchiveXL.dll'
         Extra    = @('red4ext\plugins\ArchiveXL\Scripts')
         Required = $false
-        # KSTP has no .archive and no .xl. Every string it shows is a literal carried on
-        # the redscript and TweakXL side, so nothing in the mod loads through ArchiveXL
-        # and requiring it would send players after a dependency they do not need.
+        # KSTP has no .archive and no .xl. The item display strings are LocKey tokens
+        # registered from script through Codeware, and every other string is a literal
+        # carried on the redscript and TweakXL side (ADR 0008), so nothing in the mod
+        # loads through ArchiveXL and requiring it would send players after a dependency
+        # they do not need.
         Why      = 'loads .xl archive manifests; KSTP ships none, so nothing in the mod depends on it'
     }
     [pscustomobject]@{
@@ -213,14 +215,14 @@ $frameworks = @(
         Marker   = 'red4ext\plugins\Codeware\Codeware.dll'
         Extra    = @('red4ext\plugins\Codeware\Scripts')
         Required = $false
-        Why      = 'swaps the NPC-spawn hook to the CallbackSystem path; the vanilla @wrapMethod fallback is equivalent, that hook feeds only the faction axis, and its call surface here is UNVERIFIED (Faction.reds)'
+        Why      = 'registers the coprocessor display names from script (ADR 0008), which render blank without it; also swaps the NPC-spawn hook to the CallbackSystem path, where the @wrapMethod fallback covers the same puppets and the Codeware call surface is UNVERIFIED (Faction.reds)'
     }
     [pscustomobject]@{
         Name     = 'Mod Settings'
         Marker   = 'red4ext\plugins\mod_settings\mod_settings.dll'
         Extra    = @('red4ext\plugins\mod_settings\module.reds')
         Required = $false
-        Why      = 'the only backing store for the experiment gates; without it all three stay off'
+        Why      = 'the only backing store for the settings page and the experiment gates; without it every option holds its compiled default and nothing in game can move one (ADR 0010)'
     }
     [pscustomobject]@{
         Name     = 'Input Loader'
@@ -413,30 +415,35 @@ if ($missingOptional.Count -gt 0) {
     Write-Note 'KSTP still runs; the features these back degrade to defaults.'
     if ($missingOptional -contains 'Cyber Engine Tweaks') {
         Write-Note 'Without CET the five experiments in experiments\cet\kstp_lab\README.md cannot be run,'
-        Write-Note 'so every gate in Mod Settings stays off. The mod is fully playable in that state.'
+        Write-Note 'so every gate keeps its shipped default. The mod is fully playable in that state.'
     }
 }
 
-# Mod Settings stays Required = $false because KSTP loads without it: Core/Gate.reds
-# compiles and runs with the framework absent, every gate reading its compiled default
-# of false, and the mod is fully playable in that state. Failing -Strict on it would
-# send players after a dependency the mod does not need to run.
+# Mod Settings stays Required = $false because KSTP loads without it: Core/Gate.reds and
+# UI/Settings.reds compile and run with the framework absent, every field reading its
+# compiled default, and the mod is fully playable in that state. The one place that names
+# the ModSettings class, the active-protocol write-back, sits behind
+# @if(ModuleExists("ModSettingsModule")) and compiles out (ADR 0010). Failing -Strict on it
+# would send players after a dependency the mod does not need to run.
 #
-# It is still the only backing store for the three experiment gates. Gate.reds reads
-# them through @runtimeProperty("ModSettings.*") alone: no console command, no config
-# file, no fallback. Without the framework the experiments in
+# It is still the only backing store for the settings page and for the three experiment
+# gates. Gate.reds reads them through @runtimeProperty("ModSettings.*") alone: no console
+# command, no config file, no second store. Their compiled defaults are E-STAT on, E-TRACK
+# on and E-IGNORE off, so the axis those experiments qualify ships enabled and cannot be
+# moved without the framework. Without it the experiments in
 # experiments\cet\kstp_lab\README.md can be run but their results cannot be recorded, so
 # the block below states that separately from the generic optional-framework line.
 if ($missingOptional -contains 'Mod Settings') {
     Write-Host ''
-    Write-Host '  EXPERIMENT GATES ----------------------------------------------------' -ForegroundColor Yellow
-    Write-Host '  Mod Settings is required to record an experiment result.' -ForegroundColor Yellow
-    Write-Host '  Without it every gate stays off.' -ForegroundColor Yellow
-    Write-Note 'KSTP loads and plays; body-part policy and the IFF HUD need no gate.'
+    Write-Host '  SETTINGS AND EXPERIMENT GATES ---------------------------------------' -ForegroundColor Yellow
+    Write-Host '  Mod Settings is required to change a setting or record an experiment result.' -ForegroundColor Yellow
+    Write-Host '  Without it every option holds its compiled default.' -ForegroundColor Yellow
+    Write-Note 'KSTP loads and plays: the shipped defaults are a working baseline (ADR 0009),'
+    Write-Note 'with the faction axis enabled, VEHICLE unticked and the IFF overlay drawing.'
     Write-Note 'E-STAT, E-TRACK and E-IGNORE have no other backing store: Core\Gate.reds'
     Write-Note 'reads all three from Mod Settings alone. No console command, no config file.'
     Write-Note 'Install it before working through experiments\cet\kstp_lab\README.md, or the'
-    Write-Note 'results are unrecordable and the faction axis cannot be switched on.'
+    Write-Note 'results are unrecordable and no gate can be moved off its default.'
     Write-Host '  ---------------------------------------------------------------------' -ForegroundColor Yellow
 }
 

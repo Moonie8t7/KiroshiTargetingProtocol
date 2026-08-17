@@ -35,9 +35,14 @@ compiles, and the game still loads. Wrong assumptions do not announce themselves
 ## Formatting
 
 - ASCII only in source. Use `->` rather than an arrow character, and straight quotes.
-- US English, matching the game and the wider mod ecosystem: `behavior`, `color`, `initialize`.
+- British English in comments and documentation: `behaviour`, `colour`, `prioritised`.
+- US English wherever the player reads the text, matching the game: the Mod Settings labels and
+  descriptions, and the item strings in `UI/Localization.reds`. Identifiers that mirror a game or
+  framework API keep that API's spelling, such as `HDRColor` and `ModLocalizationProvider`.
 - Two-space indentation in redscript, matching the decompiled sources.
-- Keep lines under roughly 95 characters.
+- Wrap comment prose at about 100 characters. Declarations and the display strings inside
+  `@runtimeProperty` annotations run past that; an annotation argument is a single literal and is
+  not broken across lines.
 
 ## Naming
 
@@ -49,19 +54,29 @@ Check for an existing method of the same name before adding one to a class. Two 
 name on one class compile without complaint and then fail at registration, before the main menu,
 with nothing in the log.
 
+Two bodies under complementary `@if(ModuleExists(...))` guards are not a duplicate: the compiler
+resolves the guard and keeps exactly one, which is how every optional dependency is probed
+(ADR 0010).
+
 ## Logging
 
 `KSTPLog.Info` is for events a player might reasonably see: startup, teardown, a protocol change.
-Everything else is `KSTPLog.Debug`, which is off unless verbose logging is switched on in the
-settings.
+`KSTPLog.Warn` is for a degraded but survivable state, such as a missing framework or an optional
+lookup returning null, and `KSTPLog.Error` for a contract violation, where a game API returned
+what the dump says it cannot. Everything else is `KSTPLog.Debug`, which emits only when verbose
+logging is switched on in the Debug group of Mod Settings, and is off by default (ADR 0010).
 
 Nothing logs per frame or per entity at Info. Build interpolated strings only after checking
 `KSTPLog.DebugEnabled()`, so the string is never assembled when tracing is off.
 
-Messages are lowercase, factual, and carry the numbers a bug report needs.
+Messages are factual and carry the numbers a bug report needs. The `[KSTP]` prefix is added by the
+sink, so callers pass an undecorated string.
 
 ## Documentation
 
 Tables beat prose wherever more than about three parallel facts are involved. Code fences carry a
-language tag. A document recording a decision states the decision and the evidence for it; the
-route taken to reach it belongs in the commit history.
+language tag; excerpts of log output or of the decompiled dump are fenced bare. A document
+recording a decision states the decision and the evidence for it; the route taken to reach it
+belongs in the commit history. A record is immutable once accepted: a decision that changes gets a
+new record superseding the old one rather than an edit, and the index in `docs/adr/README.md`
+carries the status.

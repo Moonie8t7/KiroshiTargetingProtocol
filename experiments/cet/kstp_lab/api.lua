@@ -265,8 +265,8 @@ function api.classify(obj)
   return c
 end
 
--- Per-entity cache. The immutable axes are resolved once; attitude is refreshed on the
--- ttl because it is group-relational and changes mid-fight.
+-- Per-entity cache. The whole classification is re-resolved once the ttl lapses, because
+-- attitude is group-relational and changes mid-fight; the immutable axes are recomputed with it.
 local classCache = {}
 local classCacheSize = 0
 local CLASS_CACHE_CAP = 256

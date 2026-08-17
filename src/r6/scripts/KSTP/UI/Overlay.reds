@@ -173,7 +173,7 @@ enum KSTPVerdict {
   // Cyberware not installed or no smart weapon in hand: the protocol is enforcing nothing.
   Offline = 2,
   // Refused, but nothing acts on the refusal: the installed coprocessor is below
-  // KSTP_FactionAxisMinTier(), or KSTPGate.FactionAxisEnabled() is off. The target still
+  // no coprocessor is installed, or KSTPGate.FactionAxisEnabled() is off. The target still
   // classifies and colours.
   RefusedAdvisory = 3,
 }

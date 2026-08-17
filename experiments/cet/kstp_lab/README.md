@@ -6,9 +6,12 @@ name below is the literal label on the button.
 
 Run this rig **before** any of the mod's gated features are trusted. Three of the gates in
 `Core/Gate.reds` - `FactionAxisEnabled`, `LiveStatReread`, `IgnoreListWorks` - are set from what
-these experiments prove on *your* build. Every gate is off by default, and the mod is fully
-playable with all of them off. Turning one on because you would like it to be true, rather than
-because you watched it happen, gives you a mod that silently does nothing where it claims to act.
+these experiments prove on *your* build. The first two ship **on**, carrying the result measured
+on 2.31 (ADR 0003, ADR 0013); `IgnoreListWorks` ships **off**, because the smart-gun handler does
+not consult the look-at ignore list. The mod is fully playable with all three off, reduced to
+weapon-side body-part policy plus a read-only IFF overlay. Turning one on because you would like
+it to be true, rather than because you watched it happen, gives you a mod that silently does
+nothing where it claims to act.
 
 Game version: **2.31**. Requires Cyber Engine Tweaks (>= 1.18, for `FromVariant`).
 
@@ -53,17 +56,20 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 permanently. Never use `-Scope LocalMachine` for this.
 
 You need **Cyber Engine Tweaks** in the INSTALLED column. Without it there is no lab and no
-experiments - which is a fine place to stop; the mod just runs with every gate off forever.
+experiments - which is a fine place to stop; the mod then runs on the compiled gate defaults,
+which are the shipping configuration.
 
-### 2. Mod Settings is not optional - it is the only way to record a result
+### 2. Mod Settings is the only way to record a result
 
-`Core/Gate.reds` reads the three gates **only** from Mod Settings
+Mod Settings is a soft dependency of the mod itself (ADR 0010) and the only channel that moves a
+gate. `Core/Gate.reds` reads the three gates **only** from Mod Settings
 (jackhumbert's `red4ext\plugins\mod_settings`). There is no console command, no config file and
-no CET fallback. Without that plugin, `KSTPGateConfig` yields its compiled defaults and all three
-gates read `false` no matter what you prove in here.
+no CET fallback. Without that plugin, `KSTPGateConfig` yields its compiled defaults -
+`FactionAxisEnabled` and `LiveStatReread` true, `IgnoreListWorks` false - no matter what you
+prove in here.
 
 So: if Mod Settings is MISSING in `verify-env.ps1`, install it before you run a single
-experiment. Otherwise you will get a clean PASS and have nowhere to put it.
+experiment. Otherwise a result that disagrees with the shipped default has nowhere to go.
 
 ### 3. Deploy
 
@@ -135,13 +141,14 @@ Game.AddToInventory("Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus", 1)
 ```
 
 That record name is authored at `src/r6/tweaks/KSTP/cyberware.yaml` (the `Items.` key), and
-`Core/Policy.reds` matches on the same string via `KSTP_CyberwareID()`. If the console errors or
-nothing arrives, TweakXL did not load the YAML - stop and fix that first.
+`Core/Policy.reds` matches on the same string via `KSTP_CyberwareTierOf()`. If the console errors
+or nothing arrives, TweakXL did not load the YAML - stop and fix that first.
 
-Then equip it (Inventory > Cyberware > Frontal Cortex; it is also stocked at Viktor Vektor) and
-draw a smart weapon. `KSTPPolicySystem.IsArmed()` is true only when **both** halves hold - cyberware installed *and* a smart weapon in hand - and you can see it flip on the IFF overlay:
-the chip on each tracked target reads `OFFLINE` while unarmed and `PERMIT` / `REFUSE` once armed.
-Holster the weapon and it goes back to `OFFLINE`.
+Then equip it (Inventory > Cyberware > Frontal Cortex; the Rare grade is also stocked at Viktor
+Vektor) and draw a smart weapon. `KSTPPolicySystem.IsArmed()` is true only when **both** halves
+hold - cyberware installed *and* a smart weapon in hand - and you can see it flip on the IFF
+overlay: the chip on each tracked target reads `OFFLINE` while unarmed and `PERMIT` / `REFUSE`
+once armed. Holster the weapon and it goes back to `OFFLINE`.
 
 ---
 
@@ -214,6 +221,10 @@ modifier reached the object.
 A moved number with no visible effect is **FAIL**, not PASS. That distinction is the whole point
 of this experiment.
 
+**Pin an NPC, not a car.** The identical inflation was measured to leave a vehicle locking at
+normal speed while it held an NPC at `Locking` indefinitely, so a car answers a different question
+and reads as a false FAIL. Vehicle exclusion travels the class mask instead (ADR 0013).
+
 **False-negative trap: you may have nothing to multiply.** If your weapon already locks almost
 instantly - high-level smart gun, close range - then multiplying a near-zero lock time by a
 thousand still lands the lock inside a frame or two, and both NPCs look identical. Before you
@@ -246,9 +257,9 @@ weapon handler latches on draw?
 
 If they only disappear after you press **`cycle smart-gun handler`** (which queues
 `EnableSmartGunHandlerEvent` off, then on again 0.6 s later - the same event
-`vehicleTransition.script` uses), record **PASS** with the note `needs re-latch`. That still sets
-`KSTPGate.LiveStatReread`, and tells `Enforcement/BodyPart.reds` it must cycle the handler after
-every change.
+`vehicleTransition.script` uses), record **PASS** with the note `needs re-latch` and leave
+`KSTPGate.LiveStatReread` **off**: `Enforcement/BodyPart.reds` cycles the handler itself after
+every apply exactly while that gate is off.
 
 If nothing happens either way, the setting never applied at all. That is a broken setup, not a
 result - check the log panel and re-run.
@@ -368,22 +379,22 @@ containing every verdict, the auto-collected evidence lines, the E-FILTER counte
 mapping and the last 60 log lines. Paste the whole file back if you want help interpreting a
 result. A rolling transcript is also appended to `kstp_lab_log.txt` beside it.
 
-### Then turn the gate on, in Mod Settings
+### Then set the gate, in Mod Settings
 
-Pause menu > Settings > Mods > **Kiroshi Targeting Protocol** > the experiments category. Three
-toggles, all off by default:
+Pause menu > Settings > Mods > **Kiroshi Targeting Protocol** > **Debug - experiment gates**.
+Three toggles; the first two ship on, the third off:
 
-| Report line | Mod Settings toggle | What it unlocks |
+| Report line | Mod Settings toggle | What it governs |
 |---|---|---|
-| `KSTPGate.FactionAxisEnabled <- E-STAT` | faction axis | `Enforcement/Faction.reds` may write suppression modifiers to world NPCs, so a protocol can actually refuse civilians instead of only labelling them |
-| `KSTPGate.LiveStatReread <- E-TRACK` | live stat re-read | protocol changes are believed to take effect immediately instead of from the next draw |
-| `KSTPGate.IgnoreListWorks <- E-IGNORE` | ignore list | recorded for now; nothing in the shipped feature set depends on it yet |
+| `KSTPGate.FactionAxisEnabled <- E-STAT` | Enforce the faction axis | `Enforcement/Faction.reds` may write suppression modifiers to world NPCs, so a protocol can actually refuse civilians instead of only labelling them. Off, the overlay marks a refusal `REFUSE*` and nothing acts on it |
+| `KSTPGate.LiveStatReread <- E-TRACK` | Bind protocol changes immediately | a protocol change binds to the weapon already in hand. Off, `Enforcement/BodyPart.reds` cycles the smart-gun handler after every apply instead |
+| `KSTPGate.IgnoreListWorks <- E-IGNORE` | Use the look-at ignore list (does not work) | routes denied targets through the look-at ignore list. On, `Suppress()` clears the time-to-lock modifiers before adding the entity, so it stands down the route that does work and the faction filter refuses nothing |
 
 E-FILTER and E-AIMASSIST set no gate. They exist to kill or confirm a design lead, and their
 verdicts live in the report only.
 
 Set each toggle to match what you actually saw. Leave anything you did not run, or were unsure
-about, **off**. Restart the game so the gates apply cleanly.
+about, at its shipped value. Restart the game so the gates apply cleanly.
 
 ---
 

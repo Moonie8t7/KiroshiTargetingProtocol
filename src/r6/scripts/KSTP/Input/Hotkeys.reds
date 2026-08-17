@@ -32,7 +32,9 @@ public func KSTP_InputTypeName(t: gameinputActionType) -> String {
   return "OTHER(" + ToString(EnumInt(t)) + ")";
 }
 
-// Compile-time probe for Codeware, which UI/Overlay.reds requires for its custom widgets.
+// Compile-time probe for Codeware. Enforcement/Faction.reds uses it for the spawn hook and
+// UI/Localization.reds for the display names; UI/Overlay.reds builds its widgets from base ink
+// types and needs nothing from it.
 // @if(ModuleExists(...)) is resolved by the compiler, so exactly one body is compiled and the
 // result is a constant. Guard pattern follows CP77Mods\Limited HUD\r6\scripts\LHUD\utils.reds:7-16.
 @if(ModuleExists("Codeware"))

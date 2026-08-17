@@ -7,9 +7,10 @@
 # The enforcement modules do not use the modifier-group API. Enforcement/BodyPart.reds
 # and Enforcement/Faction.reds build their modifiers at runtime with
 # RPGManager.CreateStatModifier and hand them to StatsSystem.AddModifier /
-# RemoveModifier (orphans.script:16943 / :16949), because the values depend on the live
-# protocol and, for BodyPart, on the live base value of the stat being suppressed. A
-# TweakDB ConstantStatModifier record holds one value fixed at author time and cannot
+# RemoveModifier (orphans.script:16943 / :16949), because what each module applies
+# depends on the live protocol: for Faction, which NPC the protocol refuses; for
+# BodyPart, which classes it denies and the live base value of the stat being suppressed.
+# A TweakDB ConstantStatModifier record holds one value fixed at author time and cannot
 # express that, so no per-policy group record belongs in this file.
 #
 # What TweakDB owns is the group the effector points at: ApplyStatGroupEffector requires
@@ -68,8 +69,10 @@
 # four classes. These modifiers bring those four online so the protocol has all seven
 # classes to arbitrate over, matching the vanilla precedent where
 # Items.KiroshiOpticsFragment1 unlocked one class (Leg) on the held weapon. Chest, Leg
-# and Mechanical are never touched, so AUTO stays vanilla behavior plus whichever new
-# classes the installed tier has unlocked.
+# and Mechanical are never touched, so a protocol permitting every class stays vanilla
+# behaviour plus whichever new classes the installed tier has unlocked. The mask is the
+# seven settings toggles (ADR 0009) and VEHICLE ships unticked, so the tier-4 unlock
+# reaches the weapon only while that toggle is on.
 #
 # Additive 2 over a base of 0 is what the handler reads as tracked; the value is a
 # component budget rather than a flag, and 2 sits between vanilla Leg and Mechanical.
@@ -117,8 +120,11 @@ KSTP.Mod_TrackOn_Vehicle:
 # Applied to the held weapon's stats object, the same object the class unlocks above go
 # to. Faction suppression writes to the target NPC's stats object instead, so the two
 # never combine. Enforcement/BodyPart.reds under PREFERRED does write this stat on the
-# weapon for classes the active protocol denies; a denied class there ends up at 0.85
-# times its inflated value, which leaves it just as unreachable as before.
+# weapon for the classes the active protocol denies; a denied class there ends up at 0.85
+# times its inflated value, which leaves it just as unreachable as before. Vehicle is the
+# exception: it is hard-denied under either lock policy (ADR 0013), so a protocol denying
+# VEHICLE zeroes the track stat rather than inflating the lock time, and
+# Mod_FastLock_Vehicle has nothing left to scale.
 # ---------------------------------------------------------------------------
 
 KSTP.Mod_FastLock_Head:

@@ -835,13 +835,16 @@ local FLAT_PROBE = {
   'BaseStats.SmartGunTrackChestComponents.max',
   'BaseStats.SmartGunTrackWeakSpotComponents.max',
   -- The separate multi-entity axis. This is the one the Intelligence perk Targeting Prism
-  -- drives, and the one KSTP must stay out of.
+  -- drives, and the one KSTP leaves at its vanilla value unless the debug setting "Multi-target
+  -- tracking in ADS" forces it; that setting ships on INHERIT (UI/Settings.reds,
+  -- Enforcement/BodyPart.reds ApplyMultiEntityADS).
   'BaseStats.SmartGunTrackMultipleEntitiesInADS.min',
   'BaseStats.SmartGunTrackMultipleEntitiesInADS.max',
   -- Which numeric two-column rows a cyberware card is permitted to draw.
   'UIMaps.Cyberware.secondaryStats',
-  -- What a vanilla frontal-cortex implant puts in the shard slot. Needed before KSTP can
-  -- name one: a dangling foreign key passes TweakXL silently.
+  -- What a vanilla frontal-cortex implant puts in the shard slot. KSTP names
+  -- Items.GenericItemRootPreset (cyberware.yaml) and a dangling foreign key passes TweakXL
+  -- silently, so the vanilla value is read back to check that choice.
   'Items.AdvancedVisualCortexSupportCommon.slotPartListPreset',
   'Items.AdvancedMechatronicCoreCommon.slotPartListPreset',
   'Items.AdvancedVisualCortexSupportCommon.statModifiers',
@@ -926,8 +929,10 @@ local function probeIcons()
 end
 
 -- The live component budget on the equipped weapon. This is the number the balance decision
--- turns on: the project's notes claim vanilla ships Chest 3 / Leg 2 / Mechanical 1 and 0 for
--- the other four, and that has never been read back from the game.
+-- turns on. Vanilla ships Chest 3 / Leg 2 / Mechanical 1 and 0 for the other four, read back
+-- from the game in the E-TRACK before-values and again in the mod's own track-stat trace
+-- (docs/research/experiments.md section 2); this probe records the whole set on the current
+-- install, including the classes the coprocessor unlocks.
 --
 -- Split out of probeIcons because onInit fires at load, long before the player can have a
 -- weapon in hand, so running it there can only ever report an empty slot. Polled instead,
@@ -950,8 +955,9 @@ local function probeBudget()
     local ve = api.statValue(t.entity, stat)
     Log.write('    %-40s itemData=%s entity=%s', stat, tostring(vi or 'nil'), tostring(ve or 'nil'))
   end
-  -- The multi-entity axis, for contrast. It is a boolean (max 1) and belongs to the
-  -- Intelligence perk Targeting Prism. KSTP must leave it at its vanilla value.
+  -- The multi-entity axis, for contrast. It belongs to the Intelligence perk Targeting Prism,
+  -- and KSTP leaves it at its vanilla value on the shipped INHERIT default; whether it is a
+  -- boolean is what the .min/.max flats above are read to settle.
   local mi = api.statValue(t.itemData, 'SmartGunTrackMultipleEntitiesInADS')
   local me = api.statValue(t.entity, 'SmartGunTrackMultipleEntitiesInADS')
   Log.write('    %-40s itemData=%s entity=%s',
@@ -979,8 +985,8 @@ registerForEvent('onUpdate', function(dt)
   runDeferred(d)
 
   -- Poll for the component budget until a weapon is in hand, then log it once. Two seconds
-  -- apart so a session spent without a smart weapon costs one cheap slot lookup per tick
-  -- rather than a stats read.
+  -- apart so a session spent without a smart weapon costs one cheap slot lookup every two
+  -- seconds rather than a stats read.
   if not budgetDone and lab.clock >= budgetNextCheck then
     budgetNextCheck = lab.clock + 2.0
     local ok, res = pcall(probeBudget)

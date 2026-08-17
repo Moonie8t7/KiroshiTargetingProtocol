@@ -4,14 +4,17 @@
 #   CP77Mods\Wannabe Edgerunner\r6\config\redsUserHints\WannabeEdgerunner.toml
 #   CP77Mods\Enhanced Craft\r6\config\redsUserHints\EnhancedCraft.toml
 #
-# KSTP names the `ModSettings` native class nowhere, so a missing mod_settings plugin
-# degrades to compiled defaults instead of failing to compile. MISSING_MOD_SETTINGS is a
-# safety net in case a later change reintroduces the reference.
+# KSTP names the `ModSettings` native class in UI/Settings.reds, behind
+# @if(ModuleExists("ModSettingsModule")) (ADR 0010). An absent mod_settings plugin makes that
+# guard false and the reference is compiled out, so the mod degrades to compiled defaults
+# instead of failing to compile. MISSING_MOD_SETTINGS therefore covers the case the guard
+# cannot: a plugin whose module.reds resolves while the `ModSettings` class in packed.reds does
+# not, which is a partial or outdated install.
 
 [[UNRESOLVED_REF]]
 id = "MISSING_MOD_SETTINGS"
 line_contains = "ModSettings."
-message = "Kiroshi Smart Targeting Protocol tried to call Mod Settings but you don't have it installed. Try to (re)install it and make sure that you have \"red4ext\\plugins\\mod_settings\" folder."
+message = "Kiroshi Smart Targeting Protocol tried to call Mod Settings and the call did not resolve, so your Mod Settings install is incomplete or out of date. Try to (re)install it and make sure that you have \"red4ext\\plugins\\mod_settings\" folder."
 
 [[UNRESOLVED_METHOD]]
 id = "MISSING_TWEAKXL"

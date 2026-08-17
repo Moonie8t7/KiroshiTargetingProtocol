@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted; scope narrowed by [0013](0013-each-axis-enforces-its-own-question.md). Lock-time
+inflation holds a puppet at `Locking` and has no measured effect on a vehicle, so vehicle
+exclusion travels the class mask instead. The mechanism below stands for NPCs.
 
 ## Context
 

@@ -178,9 +178,14 @@ Seven entries, one per component class:
 
 Source: `orphans.script:2775-2781`.
 
-The lock timer resolves these from the **target NPC's** stats object. That makes them the only
+The lock timer resolves these from the **target's** stats object. That makes them the only
 per-entity control in the pipeline: a large multiplier on one NPC holds that NPC at `Locking`
 while every other candidate locks normally.
+
+The mechanism is confirmed on `ScriptedPuppet` and only there. Applied to a vehicle it does
+nothing: a car under `SmartGunTimeToLockVehicleComponentMultiplier` at x1000 took a full lock at
+normal speed, in the session where identical inflation held an NPC at `Locking` indefinitely
+(`experiments.md`; ADR 0013). Excluding a vehicle is a class-mask job, section 6.
 
 The mechanism is preventive. It stops a lock from completing; it does not release a lock that has
 already completed. Enforcement therefore has to reach a candidate before the lock timer finishes,
@@ -262,8 +267,19 @@ hud_panzer.script:149   if IsDefined(this.m_weaponBlackboard) {
               GetAllBlackboardDefs().UI_ActiveWeaponData.SmartGunParams, this.m_weaponParamsListenerId);
 ```
 
-Two consequences for any consumer:
+Three consequences for any consumer:
 
+- **`RegisterDelayedListener*` delivers only to an ink game controller.** Every
+  `RegisterDelayedListener*` call site in the 2.31 dump sits on one, `hud_panzer.script:132`
+  included, while plain `RegisterListener*` is used freely elsewhere (`senseComponent.script:335`,
+  `vehicleComponent.script:5164`). The delayed queue is drained by the UI traversal that services
+  game controllers, so a registration made from a component, a `ScriptableSystem` or a bare
+  `IScriptable` returns a valid handle and is never called back: the registration reports success
+  and the callback count stays at zero. A consumer outside that traversal takes delivery from a
+  controller that already has it, or polls the variable with `GetVariant` instead.
+  `CrosshairGameController_Smart_Rifl` registers this exact variable at
+  `crosshairController_Smart_Rifle.script:67` and handles it at `:91` (ADR 0012). The native
+  implementation was not read; the attribution rests on that corpus split and on measurement.
 - The listener is **delayed**. It fires on the UI tick rather than the game tick, so the payload
   trails the simulation. Enforcement driven off this listener is reactive by construction and can
   arrive after a lock has already completed.
@@ -274,7 +290,7 @@ Two consequences for any consumer:
 
 ## 6. The head-slot fallback
 
-Disabling every component class does not stop engagement.
+Disabling every component class does not stop a puppet being engaged.
 
 `AIWeapon.Fire` (`cyberpunk\items\weapon.script:1469`) picks the best component on the target and
 falls through to a bare head slot when there is none:
@@ -289,9 +305,15 @@ weapon.script:1533     positionProvider = ... IPositionProvider.CreateSlotPositi
 ```
 
 Zeroing every `SmartGunTrack*Components` stat therefore produces a lock on a raw head slot rather
-than a refusal (`experiments.md`, weapon-side track stats). A design that wants "do not engage this
-target at all" has to use the target-side lock-time mechanism in section 4, not an empty component
-set.
+than a refusal (`experiments.md`, weapon-side track stats). Against a `ScriptedPuppet`, a design
+that wants "do not engage this target at all" has to use the target-side lock-time mechanism in
+section 4, not an empty component set.
+
+Vehicles are the exception. Zeroing `SmartGunTrackVehicleComponents` does remove them: across 412
+lock-list traces taken after that change, no vehicle appeared on the target list at all
+(ADR 0013). Whether the fallback is skipped because a car carries no `Head` slot is not settled by
+the dump. Section 4's mechanism is the one that fails on this target type, so a puppet and a
+vehicle are excluded on opposite axes.
 
 ---
 
@@ -344,13 +366,15 @@ Only puppets, vehicles, sensor devices and muppets override it (`scriptedPuppet.
 `core\gameplay\vehicles.script:514`, `cyberpunk\devices\core\sensorDevice.script:452`,
 `cyberpunk\muppet\muppet.script:22`).
 
-Drones, turrets and most devices are lockable (`SmartGunTrackMechanicalComponents` and
-`SmartGunTrackVehicleComponents` exist for them) and have no attitude agent. Every one of them
-reads back as `AIA_Neutral`, indistinguishable from a neutral NPC with an attitude agent. A
-hostile-only filter
-built on attitude alone refuses every drone and turret in the game while appearing correct on
-humans. Track whether the attitude is known separately from its value, and branch on whether the
-object is a puppet before consulting it.
+Turrets and most devices are lockable (`SmartGunTrackMechanicalComponents` and
+`SmartGunTrackVehicleComponents` exist for them) and have no attitude agent; a vehicle overrides
+the accessor but its `m_attitudeAgent` may still be null. Every one of those reads back as
+`AIA_Neutral`, indistinguishable from a neutral NPC with an attitude agent. A hostile-only filter
+built on attitude alone refuses every turret in the game while appearing correct on humans. Track
+whether the attitude is known separately from its value, and branch on whether the agent exists
+rather than on whether the object is a puppet: the puppet test lets through a vehicle whose agent
+is null, and drones are `ScriptedPuppet`s that do carry one (`gamedataNPCType.Drone` is read
+through `GetNPCType()`, `scriptedPuppet.script:1118`).
 
 Attitude is group-relational and changes during combat. It cannot be cached.
 
@@ -433,6 +457,8 @@ All paths relative to `<decompiled-scripts>`.
 | `smartGunUIParameters` | `orphans.script:54441-54455` |
 | `gamesmartGunTargetState` | `orphans.script:8702-8708` |
 | Blackboard register and unregister pattern | `cyberpunk\UI\hud\custom\hud_panzer.script:130-132`, `:149-150` |
+| `CrosshairGameController_Smart_Rifl` registers and handles `SmartGunParams` | `crosshairController_Smart_Rifle.script:67`, `:91` |
+| Plain `RegisterListener*` off a game controller | `senseComponent.script:335`; `core\components\scriptComponents\vehicleComponent.script:5164` |
 | `EnableSmartGunHandlerEvent` | `orphans.script:61871` |
 | `GetAttitudeTowards`, static and instance, both Neutral-fallback | `core\entity\gameObject.script:451-463`, `:465-475` |
 | `GetAttitudeAgent()` returns null on the base class | `core\entity\gameObject.script:430-432` |

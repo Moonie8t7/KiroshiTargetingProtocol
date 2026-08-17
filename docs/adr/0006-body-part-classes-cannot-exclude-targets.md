@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted; scope narrowed by [0013](0013-each-axis-enforces-its-own-question.md). Vehicle is the
+one class the mask does exclude, hard-denied under either lock policy. The finding below holds
+for the other six.
 
 ## Context
 

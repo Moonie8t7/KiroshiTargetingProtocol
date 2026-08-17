@@ -11,7 +11,7 @@
 // gated on KSTPGate.IgnoreListWorks(), calls TargetingSystem.AddIgnoredLookAtEntity
 // (orphans.script:22443): observer-scoped, but LookAt-scoped and unread by the smart-gun handler,
 // so it ships off and remains as the documented alternative. Both routes also require
-// KSTPPolicySystem.FactionAxisAvailable() (Core/Policy.reds KSTP_FactionAxisMinTier, ADR 0007),
+// KSTPPolicySystem.FactionAxisAvailable(), satisfied by a coprocessor of any grade (ADR 0009),
 // and both are undone by ClearAll().
 //
 // Depends on KSTP.Core; UI/Overlay.reds supplies the per-frame smart-gun payload; Codeware
@@ -37,8 +37,8 @@ public func KSTP_PushSmartGunParams(gi: GameInstance, value: Variant) -> Void {
   sys.OnSmartGunParams(value);
 }
 
-// Static entry points for enforcement. Every one tolerates a missing system, a closed gate and a
-// tier below KSTP_FactionAxisMinTier().
+// Static entry points for enforcement. Every one tolerates a missing system, a closed gate and an
+// uninstalled coprocessor.
 public class KSTPFaction {
 
   // Per-NPC-spawn entry point. Must stay cheap: the gate check is first and it is a plain Mod
@@ -92,8 +92,7 @@ public class KSTPFaction {
 
   // Restores every entity this system has touched. Ungated: teardown that refused to run because
   // the feature is already off would strand modifiers on live NPCs. Must be called on gate-off,
-  // on a protocol change to one without faction filtering, on cyberware unequip or downgrade
-  // below KSTP_FactionAxisMinTier(), and at session end. Idempotent and cheap when nothing is
+  // on a protocol change to one without faction filtering, on cyberware unequip, and at session end. Idempotent and cheap when nothing is
   // tracked, so a caller that cannot tell whether anything was applied should call it anyway.
   public final static func ClearAll(gi: GameInstance) -> Void {
     let sys: ref<KSTPFactionSystem> = KSTPFactionSystem.Get(gi);
@@ -159,7 +158,7 @@ public class KSTPFactionSystem extends ScriptableSystem {
     return GameInstance.GetScriptableSystemsContainer(gi).Get(n"KSTP.Enforcement.KSTPFactionSystem") as KSTPFactionSystem;
   }
 
-  // Whether the installed coprocessor reaches KSTP_FactionAxisMinTier (Core/Policy.reds).
+  // Whether the installed coprocessor reaches FactionAxisAvailable (Core/Policy.reds).
   // Distinct from KSTPGate.FactionAxisEnabled(), which records whether the mechanism works on this
   // build at all: both must hold before anything is suppressed, and either going false is a
   // release rather than a bare return. False with no policy system.
@@ -243,7 +242,7 @@ public class KSTPFactionSystem extends ScriptableSystem {
 
   // Per-frame driver, called from UI/Overlay.reds through KSTP_PushSmartGunParams. Decides every
   // candidate the weapon is currently showing, then runs the throttled bookkeeping pass. A closed
-  // gate and a tier below KSTP_FactionAxisMinTier() both release the applied batch rather than
+  // gate and an uninstalled coprocessor both release the applied batch rather than
   // returning: this is the path a mid-session gate flip or coprocessor downgrade arrives on.
   public final func OnSmartGunParams(value: Variant) -> Bool {
     if !KSTPGate.FactionAxisEnabled() {

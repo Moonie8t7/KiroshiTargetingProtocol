@@ -7,8 +7,8 @@ Read these first:
 | Document | Why |
 |---|---|
 | `docs/STYLE.md` | Binding prose and comment style for every shipped file |
-| `docs/ARCHITECTURE.md` | The interface each module codes against, and the five hard rules |
-| `docs/ARCHITECTURE.md` | Layer ownership and the two enforcement paths |
+| `docs/ARCHITECTURE.md` | The interface each module codes against, layer ownership, the two enforcement paths, and the five rules that hold across modules |
+| `docs/adr/` | The decision behind anything that looks arbitrary. Cite a record by number rather than restating it |
 | `docs/COMPATIBILITY.md` | Framework requirements and the hook surface |
 
 ---
@@ -17,6 +17,7 @@ Read these first:
 
 - Cyberpunk 2077 build **2.31**, with RED4ext, redscript and TweakXL installed.
 - Mod Settings, for the configuration surface.
+- Codeware, for the NPC spawn hook and the coprocessor display names (ADR 0008).
 - Cyber Engine Tweaks, for the experiment lab.
 - The decompiled 2.31 game scripts at `<decompiled-scripts>`.
 
@@ -101,10 +102,15 @@ Three things to get right:
    real load order, point `-s` at the deployed `<game>\r6\scripts` instead, so every other
    installed mod's sources are in the same compilation.
 
-The `@if(ModuleExists("Codeware"))` branches resolve at compile time against whatever is in
-`-s`, so the Codeware path in `Enforcement/Faction.reds` is only exercised when Codeware's
-scripts are present in the compiled set. Check both arrangements before changing anything
-inside those guards.
+Every `@if(ModuleExists(...))` branch resolves at compile time against whatever is in `-s`.
+Framework guards ship at four sites: `Codeware` over the spawn hook in
+`Enforcement/Faction.reds` and over the probe in `Input/Hotkeys.reds`, `Codeware.Localization`
+over the display strings in `UI/Localization.reds`, and `ModSettingsModule` over the menu
+write-back in `UI/Settings.reds` (ADR 0008, ADR 0010). Those frameworks keep their scripts
+under `red4ext\plugins\...` rather than `r6\scripts`, and RED4ext adds those directories to the
+in-game compiler's source set, so neither `-s` above reaches them: an isolated check compiles
+the counterpart body of every guard, and the guarded half is exercised only in game. Check both
+arrangements before changing anything inside those guards.
 
 ---
 
@@ -114,16 +120,18 @@ inside those guards.
 |---|---|---|
 | redscript compile | `r6\logs\redscript_rCURRENT.log` | Read this first. Every syntax error, type error and unresolved symbol |
 | cybercmd | `r6\logs\cybercmd_rCURRENT.log` | Whether `scc.exe` was launched at all. An empty redscript log usually means this failed |
-| TweakXL | `red4ext\plugins\TweakXL\TweakXL-*.log` | Whether `src/r6/tweaks/KSTP` parsed and whether the cyberware record was created |
+| TweakXL | `red4ext\logs\TweakXL-*.log` | Whether `src/r6/tweaks/KSTP` parsed and whether the cyberware record was created |
 | RED4ext | `red4ext\logs\` | Plugin load failures, one log per plugin |
 | game log | `bin\x64\plugins\cyber_engine_tweaks\gamelog.log` | Every `KSTPLog` line. `FTLog` output is captured here when CET is installed |
 | CET scripting | `bin\x64\plugins\cyber_engine_tweaks\scripting.log` | Lua errors from the experiment lab |
 
 `KSTPLog.Info` is for startup, teardown and protocol switches. Diagnostics are
-`KSTPLog.Debug`, behind `KSTP_DebugLoggingEnabled()` in `Core/Log.reds`, which folds to a
-constant so the call sites cost nothing in a shipped build. A shipped build must not log per
-frame or per entity at Info level. Test `KSTPLog.DebugEnabled()` before building an
-interpolated string inside a hot loop.
+`KSTPLog.Debug`, behind `KSTP_DebugLoggingEnabled()` in `Core/Log.reds`, which reads the Mod
+Settings switch on every call and allocates a config object to do it, so tracing turns on
+without a recompile and no call site is free. A shipped build must not log per frame or per
+entity at Info level. Test `KSTPLog.DebugEnabled()` before building an interpolated string
+inside a hot loop, and hoist that test out of a loop that runs per target per frame, as
+`KSTPFactionSystem.ReevaluateTracked()` does.
 
 ---
 
@@ -151,14 +159,14 @@ control step passes.
 These are not preferences. Each one exists because breaking it has a specific, known failure
 mode.
 
-**No `@replaceMethod`, anywhere.** Use `@wrapMethod` or `@addMethod`. Redscript chains multiple
-wraps of one method; a full-body replace discards every other mod's wrap of it and silently
-reverts vanilla behavior on the next patch. If a replace looks unavoidable, stop and raise it
-instead of writing it.
+**No `@replaceMethod`, anywhere** (ADR 0002). Use `@wrapMethod` or `@addMethod`. Redscript
+chains multiple wraps of one method; a full-body replace discards every other mod's wrap of it
+and silently reverts vanilla behavior on the next patch. If a replace looks unavoidable, stop
+and raise it instead of writing it.
 
-**No `native func` declarations.** That creates a hard dependency on a C++ plugin this project
-does not ship, and an unresolved native symbol takes down the player's entire redscript load
-order, not just this mod.
+**No `native func` declarations** (ADR 0001). That creates a hard dependency on a C++ plugin
+this project does not ship, and an unresolved native symbol takes down the player's entire
+redscript load order, not just this mod.
 
 **Check for an existing method of the same name before adding one to a class.** A duplicate
 method on a `ScriptableSystem` compiles clean and then kills the game at RTTI registration,
@@ -166,10 +174,13 @@ before the main menu, with no log line. The classes in `Enforcement/Faction.reds
 `UI/Settings.reds` are large enough that this is a real hazard.
 
 **A clean compile does not prove the mod loads.** The compile log reporting "Compilation
-complete, 0 errors" is compatible with a game that crashes before the main menu. Two failure
-modes produce exactly that: a duplicate method name as above, and a reference to a native class
-registered by a plugin, such as `ModSettings`, whose absence breaks the load order rather than
-the build. Launch to the main menu, load a save, and read the log before calling a change good.
+complete, 0 errors" is compatible with a game that crashes before the main menu: a duplicate
+method name, as above, is caught at RTTI registration rather than at compile time and reports
+nothing. Naming a framework class such as `ModSettings` is not that failure mode. The plugin
+puts its own `module.reds` and `packed.reds` into the compiler's source set, so
+`@if(ModuleExists("ModSettingsModule"))` is true with the plugin installed and false without
+it, and the guarded body compiles out rather than resolving against nothing (ADR 0010). Launch
+to the main menu, load a save, and read the log before calling a change good.
 
 **Restore what you mutate, and only what you mutate.** Every stat modifier applied to a world
 entity is tracked with its exact `gameStatModifierData` handle and removed with
@@ -191,8 +202,8 @@ namespace with every other redscript mod on the install.
 2. `redscript-cli compile` returns clean against the untouched bundle.
 3. `deploy.ps1 -WhatIf` shows the file set you expect, then a real deploy.
 4. The game reaches the main menu, a save loads, and `redscript_rCURRENT.log` has zero errors.
-5. The cyberware grants and equips, and the IFF labels move from `OFFLINE` to `PERMIT` or
-   `REFUSE` when a smart weapon is drawn.
+5. The cyberware grants and equips, and the IFF labels draw over tracked targets, moving from
+   `OFFLINE` to `PERMIT`, `REFUSE` or `REFUSE*` when a smart weapon is drawn.
 6. Every new game API reference cites `file.script:line` from the 2.31 dump.
 7. The diff contains no `@replaceMethod`, no `native func`, and no new duplicate method name.
 8. Prose and comments follow `docs/STYLE.md`.
