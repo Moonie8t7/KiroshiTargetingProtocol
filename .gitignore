@@ -2,6 +2,10 @@ docs/evidence/
 tools/.deploy-manifests/
 *.disabled
 
+# Release archives built by tools/package.ps1. Derived from source and reproducible
+# from any tagged commit, so the tag is the record rather than the binary.
+dist/
+
 # Throwaway CET console snippets used while diagnosing a single session.
 kstp-cet-*.lua
 

@@ -58,6 +58,18 @@ is absent. Both hotkeys are rebindable through Input Loader.
 - Turning off `Allow civilians` changes little you can see, because civilians are not smart-gun
   candidates until something makes them hostile.
 
+### Testing scope
+
+Developed and tested on one machine: Windows 11, GOG build 2.31, alongside roughly 300 other mods.
+
+Everything in the feature list above was exercised in play. The eleven-grade upgrade chain was
+verified statically rather than by playing it, and the mod compiles cleanly with and without each
+optional framework, so a missing one cannot break a player's script load order.
+
+Not tested: a clean install with only the required frameworks, and the observable behaviour when
+each optional framework is absent. Those degrade cosmetically by design and the code paths compile,
+but none has been watched happen. `README.md` lists the specifics.
+
 ### Requirements
 
 RED4ext, redscript with cybercmd, and TweakXL are required. Mod Settings, Input Loader, Codeware and

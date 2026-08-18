@@ -224,6 +224,31 @@ limitation, and it is documented under [The implant](#the-implant).
   chosen because vanilla claims every letter key across its own contexts. A key claimed twice fires
   both actions, since nothing here consumes the input. Rebind either under Key bindings.
 
+## What has and has not been tested
+
+Version 0.1.0 was developed and tested on one machine: Windows 11, GOG build 2.31, with roughly
+300 other mods installed. That is the honest scope, and it is worth stating plainly rather than
+leaving to be discovered.
+
+**Verified in play.** Protocol switching and both hotkeys; the faction and threat axis, including
+refusals holding across weapon swaps and groups found after the menu closed; vehicle exclusion;
+the overlay in all three visibility modes; enforcement starting and stopping with the coprocessor
+fitted and removed; enforcement surviving a save load; the custom icon; and roughly 130 NPCs under
+simultaneous suppression without incident.
+
+**Verified without playing.** The eleven-grade upgrade chain, walked end to end from `Common` to
+`LegendaryPlusPlus` with every `nextUpgradeItem` checked against a real record. The mod also
+compiles cleanly in all four framework combinations, with and without Codeware and Mod Settings, so
+a missing optional framework cannot produce the redscript compile failure that would take a
+player's whole script load order down with it.
+
+**Not tested.** A clean install with only the required frameworks. The behaviour of each optional
+framework's absence, meaning the nameless implant without Codeware, the icon falling back without
+ArchiveXL, compiled defaults without Mod Settings, and inert hotkeys without Input Loader. Each of
+those has a compile-verified code path behind it and degrades cosmetically by design, but none has
+been observed. The ripperdoc upgrade panel has not been seen rendering the ladder, and only the
+Rare grade is vendor stocked, so the other ten have only ever been granted from the console.
+
 ## Compatibility
 
 KSTP uses `@wrapMethod` and `@addField` only. There is no `@replaceMethod` anywhere, so the mod
