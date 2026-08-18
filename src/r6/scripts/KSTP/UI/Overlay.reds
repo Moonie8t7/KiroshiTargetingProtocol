@@ -723,17 +723,7 @@ public let kstpOverlay: ref<KSTPIFFOverlay>;
 @wrapMethod(CrosshairGameController_Smart_Rifl)
 protected cb func OnPreIntro() -> Bool {
   wrappedMethod();
-
-  if IsDefined(this.kstpOverlay) {
-    this.kstpOverlay.Detach();
-    this.kstpOverlay = null;
-  };
-
-  let holder: wref<inkCompoundWidget> = inkWidgetRef.Get(this.m_targetHolder) as inkCompoundWidget;
-  if IsDefined(holder) && IsDefined(this.m_playerPuppet) {
-    this.kstpOverlay = new KSTPIFFOverlay();
-    this.kstpOverlay.Attach(this.GetGame(), this.m_playerPuppet, holder);
-  };
+  KSTP_EnsureOverlay(this, true);
 }
 
 // The delivery point for the whole mod. The host registers UI_ActiveWeaponData.SmartGunParams at
@@ -743,9 +733,38 @@ protected cb func OnPreIntro() -> Bool {
 // those controllers, and every call site in the dump sits on one.
 // CrosshairGameController_BlackwallForce calls super.OnSmartGunParams
 // (crosshairController_Blackwall.script:11-15), so wrapping the base covers that crosshair too.
+// Attaches the overlay to a crosshair controller, replacing any instance already on it when
+// `rebuild` is set. Safe to call repeatedly: without `rebuild` an existing overlay is left alone.
+//
+// Attaching from OnPreIntro alone loses the overlay across a save load. The crosshair intro plays
+// when a smart weapon is raised, and a load restores the player with one already in hand, so the
+// intro never runs and no attach ever fires. Measured: a load at 23:28:45 left the weapon armed
+// with no attach for sixteen seconds, until a holster and redraw forced the intro.
+public func KSTP_EnsureOverlay(controller: ref<CrosshairGameController_Smart_Rifl>, rebuild: Bool) -> Void {
+  if !IsDefined(controller) {
+    return;
+  };
+  if IsDefined(controller.kstpOverlay) {
+    if !rebuild {
+      return;
+    };
+    controller.kstpOverlay.Detach();
+    controller.kstpOverlay = null;
+  };
+  let holder: wref<inkCompoundWidget> = inkWidgetRef.Get(controller.m_targetHolder) as inkCompoundWidget;
+  if IsDefined(holder) && IsDefined(controller.m_playerPuppet) {
+    controller.kstpOverlay = new KSTPIFFOverlay();
+    controller.kstpOverlay.Attach(controller.GetGame(), controller.m_playerPuppet, holder);
+  };
+}
+
 @wrapMethod(CrosshairGameController_Smart_Rifl)
 protected cb func OnSmartGunParams(argParams: Variant) -> Bool {
   let handled: Bool = wrappedMethod(argParams);
+
+  // The payload arriving is proof the controller is live and its widget tree is up, so this is
+  // the recovery point for the save-load case where OnPreIntro never ran.
+  KSTP_EnsureOverlay(this, false);
 
   if IsDefined(this.kstpOverlay) {
     this.kstpOverlay.OnSmartGunParams(argParams);

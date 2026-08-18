@@ -19,7 +19,7 @@ in KSTP compensates for that.
 | Input Loader, or REDmod | Needed for hotkeys | `r6/input/kstp_inputs.xml` is never merged, so `KSTP_CycleProtocol` and `KSTP_Overlay` never fire. The listener stays registered and inert. Protocol selection still works from the settings menu |
 | Codeware | Recommended | Two effects. The NPC spawn hook falls back from the `Entity/Attach` CallbackSystem path to `@wrapMethod(ScriptedPuppet) OnGameAttached`, and the two are equivalent for this purpose. The cyberware also loses its name: `UI/Localization.reds` compiles out, so the `LocKey#kstp_*` tokens on the item record resolve to nothing and the ripperdoc and inventory panels show the name and flavour text blank. Tier, capacity, price, the gameplay logic package's own name and description, and every mechanic are unaffected. See [ADR 0008](adr/0008-display-names-via-codeware.md) |
 | Cyber Engine Tweaks | Development only | The experiment lab in `experiments/cet/kstp_lab` cannot run, and the console shortcut for granting the cyberware is unavailable. Not needed to play |
-| ArchiveXL | Not used | KSTP ships no `.archive` and no `.xl`. Nothing in the mod loads through it |
+| ArchiveXL | Needed for the icon | `archive/pc/mod/kstp.archive` does not load, so `UIIcon.KSTPCoprocessor` resolves to nothing and the coprocessor falls back to a stock icon. The item, its tiers and every mechanic are unaffected. See [ADR 0015](adr/0015-the-mod-ships-an-archive.md) |
 
 `tools/verify-env.ps1` prints the same list against a real install, marking each one INSTALLED,
 PARTIAL or MISSING.
@@ -102,20 +102,20 @@ one win.
 ### What KSTP itself hooks
 
 KSTP uses only `@wrapMethod` and `@addField`. It contains no `@replaceMethod`, so it never
-displaces another mod's behavior on a shared method, and it declares no `native func` of its
+displaces another mod's behaviour on a shared method, and it declares no `native func` of its
 own, so it adds no hard dependency on a C++ plugin.
 
 | Method or field | Where | Purpose |
 |---|---|---|
 | `PlayerPuppet.OnItemAddedToSlot` | Core/Policy.reds | Notice a weapon reaching the right hand |
 | `PlayerPuppet.OnItemRemovedFromSlot` | Core/Policy.reds | Notice a weapon leaving it |
-| `EquipmentSystem.OnInstallCyberwareRequest` | Core/Policy.reds | Notice the mod's cyberware being installed |
-| `EquipmentSystem.OnUninstallCyberwareRequest` | Core/Policy.reds | Notice it being removed |
+| `EquipmentSystemPlayerData.OnEquipRequest` | Core/Policy.reds | Notice the mod's cyberware being installed. Fires for every equipment change, not only cyberware, so the handler re-reads the tier and leaves the no-change guard in `Reapply()` to discard the rest |
+| `EquipmentSystemPlayerData.OnUnequipRequest` | Core/Policy.reds | Notice it being removed, on the same terms |
 | `ScriptedPuppet.OnDetach` | Core/Classifier.reds | Drop the entity's cached classification axes |
 | `ScriptedPuppet.OnGameAttached` | Enforcement/Faction.reds | Spawn hook, compiled only when Codeware is absent |
 | `PauseMenuGameController.OnUninitialize` | UI/Settings.reds | Settings-menu-closed signal |
-| `CrosshairGameController_Smart_Rifl.OnPreIntro` | UI/Overlay.reds | Attach the IFF overlay |
-| `CrosshairGameController_Smart_Rifl.OnSmartGunParams` | UI/Overlay.reds | Per-frame smart-gun payload: draws the overlay and drives the faction axis |
+| `CrosshairGameController_Smart_Rifl.OnPreIntro` | UI/Overlay.reds | Attach the IFF overlay when a smart weapon is raised |
+| `CrosshairGameController_Smart_Rifl.OnSmartGunParams` | UI/Overlay.reds | Per-frame smart-gun payload: draws the overlay and drives the faction axis. Also attaches the overlay if the intro never ran, which is the case after a save load restores the player holding the weapon |
 | `CrosshairGameController_Smart_Rifl.OnPreOutro` | UI/Overlay.reds | Detach it |
 | `gameuiCrosshairBaseGameController.OnUninitialize` | UI/Overlay.reds | Detach it when the controller dies without an outro |
 | `PlayerPuppet.OnGameAttached` | Input/Hotkeys.reds | Register the input listener |
@@ -181,9 +181,12 @@ per-install manifest kept inside the project.
 
 ## Display strings
 
-The mod ships no `.archive` and has no WolvenKit pack step, so the custom `LocKey#kstp_*`
-tokens the item record cites are registered from script instead, through Codeware's
-localization system in `UI/Localization.reds` ([ADR 0008](adr/0008-display-names-via-codeware.md)).
+The custom `LocKey#kstp_*` tokens the item record cites are registered from script, through
+Codeware's localization system in `UI/Localization.reds`
+([ADR 0008](adr/0008-display-names-via-codeware.md)). The archive the mod now ships carries the
+icon only ([ADR 0015](adr/0015-the-mod-ships-an-archive.md)); moving the strings into it as a
+cooked `JsonResource` would trade the Codeware dependency for an ArchiveXL one and is not
+proposed.
 With Codeware absent that file compiles out and the tokens resolve to nothing:
 `GetLocalizedItemNameByCName` (orphans.script:20082) hashes its argument and returns an empty
 string on a miss, so the item renders nameless rather than showing the key.

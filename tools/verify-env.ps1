@@ -203,12 +203,12 @@ $frameworks = @(
         Marker   = 'red4ext\plugins\ArchiveXL\ArchiveXL.dll'
         Extra    = @('red4ext\plugins\ArchiveXL\Scripts')
         Required = $false
-        # KSTP has no .archive and no .xl. The item display strings are LocKey tokens
-        # registered from script through Codeware, and every other string is a literal
-        # carried on the redscript and TweakXL side (ADR 0008), so nothing in the mod
-        # loads through ArchiveXL and requiring it would send players after a dependency
-        # they do not need.
-        Why      = 'loads .xl archive manifests; KSTP ships none, so nothing in the mod depends on it'
+        # KSTP ships kstp.archive for the coprocessor icon (ADR 0015). Without ArchiveXL the
+        # atlas does not load and the icon falls back to a stock one; the item, its tiers and
+        # every mechanic still work, so this degrades appearance rather than function and stays
+        # optional. Display strings are unaffected: they are registered from script through
+        # Codeware (ADR 0008).
+        Why      = 'loads archive\pc\mod; without it the coprocessor icon falls back, nothing else changes'
     }
     [pscustomobject]@{
         Name     = 'Codeware'
@@ -242,13 +242,13 @@ $frameworks = @(
 
 # Content directories the deploy writes into. These are not frameworks; their absence is
 # the usual reason a framework reports as installed yet loads nothing. WhenAbsent carries
-# the per-directory meaning: deploy.ps1 creates the ones it writes to, and it never
-# touches archive\pc\mod, since KSTP ships no .archive.
+# the per-directory meaning: deploy.ps1 creates every one of them, archive\pc\mod included,
+# since KSTP ships kstp.archive for the coprocessor icon (ADR 0015).
 $contentDirs = @(
     [pscustomobject]@{ Name = 'r6\scripts';     Path = 'r6\scripts';     Note = 'redscript source root';  WhenAbsent = 'deploy.ps1 will create it' }
     [pscustomobject]@{ Name = 'r6\tweaks';      Path = 'r6\tweaks';      Note = 'TweakXL YAML root';       WhenAbsent = 'deploy.ps1 will create it' }
     [pscustomobject]@{ Name = 'r6\input';       Path = 'r6\input';       Note = 'Input Loader XML root';   WhenAbsent = 'deploy.ps1 will create it' }
-    [pscustomobject]@{ Name = 'archive\pc\mod'; Path = 'archive\pc\mod'; Note = 'archive + .xl root';      WhenAbsent = 'expected; KSTP writes nothing here' }
+    [pscustomobject]@{ Name = 'archive\pc\mod'; Path = 'archive\pc\mod'; Note = 'archive root; holds kstp.archive'; WhenAbsent = 'deploy.ps1 will create it' }
     [pscustomobject]@{ Name = 'CET mods';       Path = 'bin\x64\plugins\cyber_engine_tweaks\mods'; Note = 'CET Lua mod root'; WhenAbsent = 'deploy.ps1 will create it' }
 )
 

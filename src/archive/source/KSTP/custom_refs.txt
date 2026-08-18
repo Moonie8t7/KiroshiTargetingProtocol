@@ -1,0 +1,2 @@
+base\kstp\icons\kstp_coprocessor_1080.xbm
+base\kstp\icons\kstp_coprocessor.xbm

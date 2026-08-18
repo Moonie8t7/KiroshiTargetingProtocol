@@ -58,8 +58,12 @@ public class KSTPFaction {
     if KSTPLog.DebugEnabled() && (sys.m_spawnHits == 1 || sys.m_spawnHits % 200 == 0) {
       KSTPLog.Debug(s"spawn hook: \(sys.m_spawnHits) NPC(s) seen");
     };
-    // Unconditional: EvaluateOne discards the entity while unarmed or below tier, and the later
-    // sweep must still be able to reach this NPC.
+    // Recording while unarmed buys nothing now that SeedKnown covers that case from the world
+    // itself, and each spawn recorded is one the linear membership test walks later (ADR 0014).
+    let policy: ref<KSTPPolicySystem> = KSTPPolicySystem.Get(puppet.GetGame());
+    if !IsDefined(policy) || !policy.IsArmed() {
+      return;
+    };
     sys.TrackKnown(puppet.GetEntityID());
     sys.EvaluateOne(puppet);
   }
@@ -143,15 +147,32 @@ public class KSTPFactionSystem extends ScriptableSystem {
   private let m_lastLockSet: array<EntityID>;
   private let m_heartbeat: Int32;
 
+  // Throttle for the recovery seed in ReevaluateTracked. Zero by default, so the first bookkeeping
+  // pass after a load seeds at once rather than waiting out a cooldown.
+  private let m_seedCooldown: Int32;
+
   // Diagnostic only. The Codeware call surface HookSpawnCallback uses (n"Entity/Attach",
   // EntityTarget.Type, EntityLifecycleEvent.GetEntity) appears nowhere in the 2.31 dump, so this
   // counter is what tells a bug report whether the hook fires at all.
   private let m_spawnHits: Int32;
 
-  // Every puppet the spawn hook has reported, whether or not it could be acted on at the time.
-  // EvaluateOne requires policy.IsArmed(), which is rarely true at the moment an NPC streams in,
-  // so recording is unconditional and cheap and the decision is deferred to SweepKnown().
+  // The bounded working set enforcement pre-empts on its next sweep: seeded from a radius query,
+  // capped by KnownCap(), never persistent. Dropping either bound restores the unbounded growth
+  // and the quadratic membership test that ADR 0014 records.
   private let m_known: array<EntityID>;
+
+  // Ceiling on m_known, set against measured live counts of 9 to 268 NPCs per sweep (ADR 0014).
+  // Reaching it costs preventive reach only: OnSmartGunParams still decides everything the weapon
+  // can currently see.
+  private final static func KnownCap() -> Int32 {
+    return 512;
+  }
+
+  // Seed radius in metres. A tuning default rather than a value derived from any vanilla constant;
+  // KnownCap() is what bounds the work (ADR 0014).
+  private final static func SeedRadius() -> Float {
+    return 80.0;
+  }
 
 
   public final static func Get(gi: GameInstance) -> ref<KSTPFactionSystem> {
@@ -373,6 +394,17 @@ public class KSTPFactionSystem extends ScriptableSystem {
       this.m_appliedClasses = wanted;
     };
 
+    // A load that restores the player already armed produces no arm transition and therefore no
+    // sweep, and this pass is reactive only. An empty working set is that state's signature. The
+    // cooldown stops a barren area re-querying twice a second (ADR 0014).
+    if this.m_seedCooldown > 0 {
+      this.m_seedCooldown -= 1;
+    };
+    if ArraySize(this.m_known) == 0 && this.m_seedCooldown <= 0 {
+      this.m_seedCooldown = 60;
+      this.SweepKnown();
+    };
+
     // 1. Everything already touched: is the verdict still "deny"?
     let tracked: array<EntityID>;
     let live: array<EntityID>;
@@ -433,13 +465,60 @@ public class KSTPFactionSystem extends ScriptableSystem {
     };
   }
 
-  // Record a puppet so a later arm or protocol change can reach it.
+  // Record a puppet so a later arm or protocol change can reach it. Refuses past KnownCap() rather
+  // than growing: the membership test below is linear, so an unbounded array makes every caller
+  // quadratic in the number of NPCs seen.
   public final func TrackKnown(id: EntityID) -> Void {
     if !EntityID.IsDefined(id) {
       return;
     };
+    if ArraySize(this.m_known) >= KSTPFactionSystem.KnownCap() {
+      return;
+    };
     if !ArrayContains(this.m_known, id) {
       ArrayPush(this.m_known, id);
+    };
+  }
+
+  // Repopulates the working set from the world around the player, which is what carries
+  // enforcement across a save load: the spawn hook only fires as an NPC streams in, so after a
+  // load the set is empty and the first target aimed at locks before any verdict exists
+  // (ADR 0014).
+  //
+  // GetEntitiesAroundObject queries the same TargetingSystem registry the smart gun draws its own
+  // candidates from, filtered to alive puppets excluding the player. It applies no line-of-sight
+  // test, so it reaches NPCs through walls.
+  private final func SeedKnown() -> Void {
+    let player: ref<GameObject> = GetPlayer(this.GetGameInstance());
+    if !IsDefined(player) {
+      return;
+    };
+    // The query drops its own distance filter when the range is not positive, which would turn a
+    // bounded lookup into the world sweep this system refuses to perform.
+    let radius: Float = KSTPFactionSystem.SeedRadius();
+    if radius <= 0.0 {
+      return;
+    };
+    let found: array<ref<Entity>> = player.GetEntitiesAroundObject(radius, TSF_NPC());
+    let puppet: ref<ScriptedPuppet>;
+    let seeded: Int32 = 0;
+    let i: Int32 = 0;
+    while i < ArraySize(found) {
+      puppet = found[i] as ScriptedPuppet;
+      if IsDefined(puppet) {
+        if ArraySize(this.m_known) >= KSTPFactionSystem.KnownCap() {
+          i = ArraySize(found);
+        } else {
+          if !ArrayContains(this.m_known, puppet.GetEntityID()) {
+            ArrayPush(this.m_known, puppet.GetEntityID());
+            seeded += 1;
+          };
+        };
+      };
+      i += 1;
+    };
+    if KSTPLog.DebugEnabled() {
+      KSTPLog.Debug(s"seed: \(seeded) NPC(s) added within \(radius)m, working set now \(ArraySize(this.m_known)) of \(KSTPFactionSystem.KnownCap())");
     };
   }
 
@@ -448,6 +527,9 @@ public class KSTPFactionSystem extends ScriptableSystem {
   // and protocol changes only, never per frame. EvaluateOne re-checks the gate, the tier and
   // IsArmed itself, so a sweep fired at a bad moment is a no-op rather than an error.
   public final func SweepKnown() -> Void {
+    // Before the prune, not after: the pass below resolves every ID and decides the survivors, so
+    // anything seeded here is covered by this same sweep rather than the next one.
+    this.SeedKnown();
     let gi: GameInstance = this.GetGameInstance();
     let live: array<EntityID>;
     let obj: ref<GameObject>;
@@ -465,7 +547,9 @@ public class KSTPFactionSystem extends ScriptableSystem {
     this.m_known = live;
     // Counts are split by route: statMod is route A, ignore is route B. With
     // KSTPGate.IgnoreListWorks() off, as shipped, a healthy line reads statMod=N ignore=0.
-    KSTPLog.Debug(s"sweep: \(ArraySize(live)) live NPC(s), \(dropped) streamed out, suppression \(before) -> statMod=\(ArraySize(this.m_statSuppressed)) ignore=\(ArraySize(this.m_ignoreSuppressed))");
+    if KSTPLog.DebugEnabled() {
+      KSTPLog.Debug(s"sweep: \(ArraySize(live)) live NPC(s), \(dropped) streamed out, suppression \(before) -> statMod=\(ArraySize(this.m_statSuppressed)) ignore=\(ArraySize(this.m_ignoreSuppressed))");
+    };
   }
 
   // Spawn-time path: the same decision without the enumeration. Only ever adds suppression, so it

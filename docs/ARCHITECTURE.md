@@ -268,14 +268,21 @@ acquisition; it is LookAt-scoped, and the smart-gun handler does not consult it.
 |---|---|---|
 | Body part | `KSTPPolicySystem.Reapply()` | Attach, protocol change, loadout change, settings change |
 | Body part | `KSTPBodyPartSlotCallback` | Weapon equipped or unequipped |
-| Faction | `KSTPFaction.OnNPCSpawned()` | Puppet attach (Codeware `Entity/Attach`, or the `@wrapMethod(ScriptedPuppet) OnGameAttached` fallback) |
+| Faction | `KSTPFaction.OnNPCSpawned()` | Puppet attach (Codeware `Entity/Attach`, or the `@wrapMethod(ScriptedPuppet) OnGameAttached` fallback), while armed only |
 | Faction | `KSTPFactionSystem.OnSmartGunParams()` | Every `SmartGunParams` payload the crosshair handles, forwarded by `UI/Overlay.reds` (ADR 0012) |
 | Faction | `KSTPFaction.Reevaluate()` | Attach, protocol change, loadout change, settings change |
 
 `Reevaluate()` walks two sets and never sweeps the world: the entities already touched, which
 have to be restored, plus the entities on the live lock list, which are the only ones that can
-be locked right now. `SweepKnown()` covers the proactive half, re-deciding every NPC the spawn
-hook recorded while the player was unarmed.
+be locked right now.
+
+`SweepKnown()` covers the proactive half, deciding the NPCs in `m_known` before any of them can
+reach the lock list. That set is a bounded working set rather than a spawn history: `SeedKnown()`
+fills it from a radius query around the player at the top of every sweep, `KnownCap()` bounds it,
+and the spawn hook tops it up only while the player is armed. Seeding is what carries enforcement
+across a save load, since the spawn hook cannot report an NPC that streamed in during a previous
+session. `ReevaluateTracked()` treats an empty working set as the signature of a load that
+restored the player already armed, and sweeps once to recover. See ADR 0014.
 
 ---
 

@@ -26,12 +26,10 @@
         experiments\cet\kstp_lab   ->  <game>\bin\x64\plugins\cyber_engine_tweaks\mods\kstp_lab
 
     src\r6 carries the redscript, the TweakXL tweaks, the Input Loader XML and the
-    redsUserHints config. KSTP ships no .archive and no .xl, since its display strings
-    are registered from script (ADR 0008), so src\archive is absent as the project
-    stands and its mapping deploys nothing; it is kept for a build that produces one.
-    Where that tree does exist, src\archive\source is WolvenKit CR2W build input the
-    game cannot read, so the mapping excludes it. The whole archive mapping is optional:
-    if src\archive is missing or empty the deploy reports that and carries on.
+    redsUserHints config. src\archive carries kstp.archive, the coprocessor icon atlas
+    (ADR 0015); src\archive\source is WolvenKit CR2W build input the game cannot read, so
+    the mapping excludes it. The archive mapping is optional: if src\archive is missing or
+    empty the deploy reports that and carries on.
 
     The target install is resolved from -GamePath, then $env:KSTP_GAME_PATH, then
     the $DefaultGamePath value near the top of this script. That default is a
@@ -290,15 +288,14 @@ $mappings = @(
         ExcludeRel = @()
     }
     [pscustomobject]@{
-        Name       = 'archive (.xl manifests)'
+        Name       = 'archive (kstp.archive)'
         Source     = Join-Path $ProjectRoot 'src\archive'
         Dest       = Join-Path $GamePath 'archive'
         Required   = $false
-        # No src\archive tree is shipped: display strings are registered from script
-        # rather than packed (ADR 0008), so this mapping currently deploys nothing.
-        # Where one is built, src\archive\source is the WolvenKit project - raw CR2W and
-        # .json.json build input that only WolvenKit reads - and only the packed side of
-        # src\archive (pc\mod\*.xl, and a .archive if one is ever produced) is deployable.
+        # Carries kstp.archive, the coprocessor icon atlas (ADR 0015). src\archive\source is
+        # the WolvenKit project - raw CR2W and .json.json build input that only WolvenKit
+        # reads - so only the packed side, src\archive\pc\mod, is deployable. Display strings
+        # are not in here; they are registered from script through Codeware (ADR 0008).
         ExcludeRel = @('source')
     }
     [pscustomobject]@{
@@ -497,8 +494,8 @@ $writtenRel = New-Object System.Collections.Generic.List[string]
 foreach ($map in $mappings) {
     Write-Head ("{0}  ({1})" -f $map.Name, (Get-RelPath -Root $ProjectRoot -Full $map.Source))
 
-    # An absent or empty optional tree is a normal state. src\archive in particular may
-    # not exist at all, since KSTP ships no .archive.
+    # An absent or empty optional tree is a normal state: a clone that has not built the
+    # WolvenKit project still deploys and runs, without the icon.
     if (-not (Test-Path -LiteralPath $map.Source -PathType Container)) {
         if ($map.Required) {
             throw "Required source tree missing: '$($map.Source)'. Nothing was deployed for this mapping."

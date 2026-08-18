@@ -20,6 +20,8 @@ Read these first:
 - Codeware, for the NPC spawn hook and the coprocessor display names (ADR 0008).
 - Cyber Engine Tweaks, for the experiment lab.
 - The decompiled 2.31 game scripts at `<decompiled-scripts>`.
+- WolvenKit, only to change the coprocessor icon. The built archive is committed, so a clone
+  deploys and runs without it.
 
 Every game API a change references must exist in that dump. If the symbol is not there, it
 does not exist, and guessing a name produces either a compile error or a silent no-op.
@@ -145,12 +147,47 @@ Its runbook is `experiments/cet/kstp_lab/README.md`, accurate to `init.lua` pane
 `deploy.ps1` installs it alongside the mod, or copy the `kstp_lab` folder by hand to
 `<game>\bin\x64\plugins\cyber_engine_tweaks\mods\kstp_lab`.
 
-Use it for anything that claims a native behavior. Everything it mutates is tracked and
+Use it for anything that claims a native behaviour. Everything it mutates is tracked and
 unwound, on `onShutdown` and through the panic hotkey, and the outstanding-mutations line says
 whether anything is still applied. Reload the save rather than trusting a crash to clean up.
 
 The `redscript_probe/` subfolder is not loaded by CET. It is only needed if the E-FILTER
 control step passes.
+
+---
+
+## Rebuilding the coprocessor icon
+
+Only needed to change the artwork. `src/archive/pc/mod/kstp.archive` is committed, so nothing
+here is required to build, deploy or run the mod (ADR 0015).
+
+The WolvenKit project is `src/archive/source/KSTP`. Its raw input is a single square PNG at
+`source/raw/base/kstp/icons/kstp_coprocessor.png`, currently 160 x 160. The full-resolution
+master it was reduced from is kept outside the project at
+`src/archive/source/artwork/kstp_coprocessor_master.png`, so a different size can be exported
+without redrawing anything. Nothing builds from the master directly.
+
+1. Export the size you want from the master, then replace the project's raw PNG with it, keeping
+   the name and a square size.
+2. Import it to `.xbm`, then generate the atlas from **the project's own raw folder**, never from
+   a directory holding several PNGs. The generator emits one atlas part per file it finds, and
+   the extra parts are silent: the archive still builds and the icon still fails to resolve.
+3. Confirm the built atlas has exactly one part, named `kstp_coprocessor`.
+4. Pack, then copy the packed archive to `src/archive/pc/mod/kstp.archive`.
+5. Deploy and check the item card in the inventory.
+
+While repacking, drop `kstp_coprocessor_1080.xbm` from `custom_refs.txt` and from the project.
+Nothing references it: the atlas has a single part and the item record names only that part, so
+the texture is packed into every shipped archive and never read. It was left in place rather than
+removed by hand, because editing the reference list without repacking would leave the committed
+archive unreproducible from the committed sources.
+
+The part name is the failure that hides. `atlasPartName` in `src/r6/tweaks/KSTP/cyberware.yaml`
+must match the name inside the built atlas exactly. A mismatch raises no TweakDB error and logs
+nothing; the icon simply falls through to the native resolver.
+
+WolvenKit's own `packed/`, `.projectFiles/` and export `.zip` are build outputs and are ignored
+by git.
 
 ---
 
@@ -161,7 +198,7 @@ mode.
 
 **No `@replaceMethod`, anywhere** (ADR 0002). Use `@wrapMethod` or `@addMethod`. Redscript
 chains multiple wraps of one method; a full-body replace discards every other mod's wrap of it
-and silently reverts vanilla behavior on the next patch. If a replace looks unavoidable, stop
+and silently reverts vanilla behaviour on the next patch. If a replace looks unavoidable, stop
 and raise it instead of writing it.
 
 **No `native func` declarations** (ADR 0001). That creates a hard dependency on a C++ plugin

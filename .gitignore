@@ -1,3 +1,10 @@
 docs/evidence/
 tools/.deploy-manifests/
 *.disabled
+
+# WolvenKit build outputs. Pack regenerates them, and the result that ships is committed
+# separately as src/archive/pc/mod/kstp.archive (ADR 0015).
+src/archive/source/**/packed/
+src/archive/source/**/.projectFiles/
+src/archive/source/**/*.zip
+src/archive/source/**/layout.xml

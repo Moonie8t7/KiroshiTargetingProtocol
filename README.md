@@ -9,7 +9,7 @@ only on those components, and only on the factions and threat classes cleared fo
 target the weapon is tracking carries an IFF label, so the verdict is readable before the trigger is
 pulled.
 
-Script only. No `.archive`, no C++ plugin, no `@replaceMethod`.
+Script and one icon archive. No C++ plugin, no `@replaceMethod`.
 
 ## Features
 
@@ -200,14 +200,21 @@ limitation, and it is documented under [The implant](#the-implant).
   slot (`weapon.script:1526`), so a human left with no permitted class is still locked on the chest.
   The class mask decides where a lock lands, not whether one happens (ADR 0006). Vehicle is the one
   class that does exclude, because a car carries a single lockable class and zeroing it takes the
-  car off the candidate list (ADR 0013).
+  car off the candidate list (ADR 0013). In play this is most visible under `ANTI-MACHINE`, which
+  cannot refuse people: it locks Scavengers, Tyger Claws and 6th Street exactly as the other
+  protocols do.
+- **Turning off `Allow civilians` changes little that you can see.** It does what it says, and a
+  measured session suppressed 224 of 238 NPCs with it off, but civilians are not smart-gun
+  candidates until something makes them hostile, and a civilian who turns hostile is no longer
+  classified as one. The setting mostly pays for itself in cases you never reach (ADR 0005).
 - **Faction suppression is target-scoped.** The faction axis works by inflating the time to lock on
   the target NPC, which is a property of that NPC rather than of the player's weapon. An allied NPC
   firing a smart weapon at a target the player has denied is impaired in the same way.
-- **Display strings are English in every locale.** The mod ships no `.archive`, so the implant's
-  name and flavour text are registered from script through Codeware, which serves the English
-  package whatever the game language (ADR 0008). Without Codeware the name renders blank, and the
-  gameplay logic package's own strings still resolve because a different native backs them.
+- **Display strings are English in every locale.** The implant's name and flavour text are
+  registered from script through Codeware, which serves the English package whatever the game
+  language (ADR 0008). Without Codeware the name renders blank, and the gameplay logic package's
+  own strings still resolve because a different native backs them. The archive the mod ships
+  carries the icon only, not strings (ADR 0015).
 - **Hotkey defaults can collide with another mod's bindings.** The defaults are the bracket keys,
   chosen because vanilla claims every letter key across its own contexts. A key claimed twice fires
   both actions, since nothing here consumes the input. Rebind either under Key bindings.

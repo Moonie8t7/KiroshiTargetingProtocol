@@ -485,16 +485,27 @@ protected cb func OnItemRemovedFromSlot(evt: ref<ItemRemovedFromSlot>) -> Bool {
   return result;
 }
 
-// equipmentSystem.script:4778 and :4783. Cyberware produces no weapon-slot event, so the
-// ripperdoc path needs its own hook.
-@wrapMethod(EquipmentSystem)
-private final func OnInstallCyberwareRequest(request: ref<InstallCyberwareRequest>) -> Void {
+// Cyberware produces no weapon-slot event, so the ripperdoc path needs its own hook.
+//
+// It is the generic equip path, not the cyberware-specific one. InstallCyberwareRequest and
+// UninstallCyberwareRequest are declared and handled (equipmentSystem.script:6058, :6065) but
+// never constructed anywhere in the 2.31 dump, so wrapping their handlers binds cleanly and
+// receives nothing. The ripperdoc queues a plain EquipRequest or UnequipRequest instead
+// (ripperdoc.script:1268 and :1454), which reaches EquipmentSystem at :5974 and :6016 and is
+// forwarded to EquipmentSystemPlayerData at :4235 and :4335.
+//
+// The player-data layer is wrapped rather than the system layer: its methods are public, which
+// EquipmentSystem's are not, and CyberarmCycle.reds:1646 wraps this exact method in a shipping
+// mod. Both fire for every equipment change rather than only cyberware, which is why
+// NotifyLoadoutChanged re-reads the tier and defers to Reapply's own no-change guard.
+@wrapMethod(EquipmentSystemPlayerData)
+public final func OnEquipRequest(request: ref<EquipRequest>) -> Void {
   wrappedMethod(request);
   KSTP_NotifyLoadoutChanged(request.owner);
 }
 
-@wrapMethod(EquipmentSystem)
-private final func OnUninstallCyberwareRequest(request: ref<UninstallCyberwareRequest>) -> Void {
+@wrapMethod(EquipmentSystemPlayerData)
+public final func OnUnequipRequest(request: ref<UnequipRequest>) -> Void {
   wrappedMethod(request);
   KSTP_NotifyLoadoutChanged(request.owner);
 }

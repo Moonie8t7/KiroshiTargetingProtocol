@@ -269,18 +269,12 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
   # IconsNameResolver.TranslateItemToIconName, and that resolver cannot know a record this
   # mod invented, so the item renders with whatever art the fallback lands on.
   #
-  # The nine frontal cortex icons on build 2.31, from the TweakDB name table in
-  # r6\cache\modded\tweakdb_ep1.str:
-  #   cw_frontalcortex_antivirus              cw_frontalcortex_memoryboost
-  #   cw_frontalcortex_braincapacitybooster   cw_frontalcortex_memoryreplenishment
-  #   cw_frontalcortex_fastaccessmemory       cw_frontalcortex_roboticcore
-  #   cw_frontalcortex_healonkill             cw_frontalcortex_improvedperception
-  #   cw_frontalcortex_limbicsystemenhancement
+  # Names UIIcon.KSTPCoprocessor, declared at the foot of this file, which resolves to the
+  # atlas this mod ships. The bare suffix is correct: the resolver prepends "UIIcon.".
   #
-  # improvedperception is the closest fit for a targeting coprocessor. That is a judgement
-  # about the artwork, not a verified claim: nothing on disk renders these, so the only way
-  # to check one is to set it and look.
-  iconPath: cw_frontalcortex_improvedperception
+  # The nine vanilla frontal cortex icons remain available if the custom atlas is ever
+  # dropped; cw_frontalcortex_improvedperception is the closest fit by name.
+  iconPath: KSTPCoprocessor
 
   # No world entity: a frontal-cortex implant has no visual representation, so
   # nothing is spawned or attached.
@@ -536,3 +530,24 @@ KSTP.VendorItem_Coprocessor:
 
 Vendors.wat_lch_ripperdoc_01.itemStock:
   - !append-once KSTP.VendorItem_Coprocessor
+
+# ---------------------------------------------------------------------------
+# Item icon
+#
+# The inventory resolver takes Item_Record.IconPath() and, on a non-empty string, looks up
+# "UIIcon." + that value (inventoryItemsManager.script:128-142), which is why the item field
+# above carries the bare suffix.
+#
+# atlasPartName must match the part inside the .inkatlas character for character. A mismatch
+# raises nothing: the lookup fails, drops through to the native resolver, and the item renders
+# with whatever fallback art that lands on. Both names are verified against the built atlas.
+#
+# This record is the reason the mod ships an .archive, which ADR 0008 had ruled out. The atlas
+# and its texture are built from src\archive\source\KSTP\ in the WolvenKit GUI and packed to
+# src\archive\pc\mod\kstp.archive; that step cannot be reproduced by a script.
+# ---------------------------------------------------------------------------
+
+UIIcon.KSTPCoprocessor:
+  $type: gamedataUIIcon_Record
+  atlasResourcePath: base\kstp\icons\kstp_coprocessor.inkatlas
+  atlasPartName: kstp_coprocessor
