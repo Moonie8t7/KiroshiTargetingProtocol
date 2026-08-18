@@ -84,6 +84,21 @@ Neither side leaks. KSTP removes every modifier it applied before applying a new
 removes by handle rather than sweeping the stat, so another mod's modifier on the same stat is
 never taken off.
 
+#### Reading the diagnostic line
+
+The `bodypart:` line under verbose logging ends with `weapon totals, all sources:`. That is the
+sum on the weapon, not this mod's contribution, and the distinction matters when diagnosing.
+
+KSTP grants `Additive 2` per unlocked class over a vanilla base of 0, so on an otherwise untouched
+weapon a class reads 0 or 2. Anything else has another writer in it. A measured session showed
+`CHEST=3 LIMBS=2 MECHANICAL=1` constant across all 67 readings while only `HEAD` moved between 0
+and 2: the odd values were another mod's, and only the `HEAD` column was KSTP's.
+
+The rule for reading it: **a value that is neither 0 nor a multiple of 2 cannot be KSTP alone.**
+A single reading of `HEAD=6 WEAKSPOT=5 BREACH=6` was investigated twice as a stacking defect in
+this mod before the `5` ruled that out arithmetically. Confirm against a weapon no other mod
+touches before concluding anything about KSTP from these numbers.
+
 ### Mods that replace PauseMenuGameController.OnUninitialize
 
 That method is the settings-menu-closed signal, and KSTP wraps it in `UI/Settings.reds` to run

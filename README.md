@@ -76,8 +76,8 @@ unaffected.
 ## Installation
 
 1. Install the required frameworks listed above.
-2. Extract the archive into the Cyberpunk 2077 install folder, so that `r6\` and `bin\` land on top
-   of the folders already there.
+2. Extract the archive into the Cyberpunk 2077 install folder, so that `r6\`, `archive\` and `bin\`
+   land on top of the folders already there.
 3. Launch the game and acquire the implant. Buy the Kiroshi IFF Targeting Coprocessor from Viktor
    Vektor's clinic in Little China, or grant any tier from the CET console:
 
@@ -88,9 +88,10 @@ unaffected.
 
    The eleven record names are listed under [The implant](#the-implant).
 
-To remove the mod, delete `r6\scripts\KSTP`, `r6\tweaks\KSTP`, `r6\input\kstp_inputs.xml` and
-`r6\config\redsUserHints\KSTP.toml`. The implant carries no permanent state, and its stat modifiers
-are stripped when it is unequipped.
+To remove the mod, delete `r6\scripts\KSTP`, `r6\tweaks\KSTP`, `r6\input\kstp_inputs.xml`,
+`r6\config\redsUserHints\KSTP.toml` and `archive\pc\mod\kstp.archive`. Unequip the implant and drop
+it first: it is a TweakXL record, so removing the mod removes the record from under it, the same as
+for any other item mod. Nothing else persists, and its stat modifiers are stripped on unequip.
 
 ### From source
 
@@ -133,6 +134,10 @@ Aldecaldos and Afterlife mercs are unticked (ADR 0009). The ladder buys target-c
 the tier 3 attunement, not the right to choose who to engage. The overlay classifies every tracked
 target and labels it `PERMIT` or `REFUSE` at every grade; a refusal that nothing acts on, because
 the faction-axis experiment gate is off, is labelled `REFUSE*`.
+
+**The overlay needs the implant.** With no coprocessor fitted it draws nothing, whatever the
+visibility setting says, so the labels are a direct signal that the implant is in and the mod is
+running (ADR 0016).
 
 **Capacity cost is 6 at every tier**, matching the vanilla convention where an implant charges the
 same capacity from its first grade to its last. Bioconductor costs 16 at tier 1 and 16 at tier 5++.

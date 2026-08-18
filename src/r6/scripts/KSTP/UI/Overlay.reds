@@ -591,7 +591,17 @@ public class KSTPIFFOverlay extends IScriptable {
   // GameObject.RegisterInputListener (gameObject.script:152) with no framework involved, so it is
   // honoured unconditionally; with no loader for r6/input/*.xml the binding never fires and the
   // ALWAYS setting is the recovery.
+  //
+  // The implant gates everything above the visibility setting. The overlay is the coprocessor's
+  // readout rather than a display that happens to sit near it, so with none fitted there is
+  // nothing to read out and the labels are the player's direct evidence that the implant is in and
+  // working (ADR 0016). Checked per tick rather than cached, so pulling the implant clears the
+  // labels on the next frame instead of at the next attach.
   private func ShouldDraw() -> Bool {
+    let policy: ref<KSTPPolicySystem> = KSTPPolicySystem.Get(this.m_game);
+    if !IsDefined(policy) || !policy.FactionAxisAvailable() {
+      return false;
+    };
     switch this.m_config.Visibility {
       case KSTPOverlayVisibility.Never:        return false;
       case KSTPOverlayVisibility.Always:       return true;
@@ -683,7 +693,9 @@ public class KSTPIFFOverlay extends IScriptable {
       };
     };
 
-    // Advisory refusals pass this filter: below the enforcing tier they are all it can show.
+    // Advisory refusals pass this filter too. With the implant now required to draw at all
+    // (ADR 0016), the remaining way to reach one is the E-STAT experiment gate being off, where
+    // the verdict is real but nothing enforces it.
     if this.m_config.OnlyRefused && !KSTPIFFStyle.IsRefusal(verdict) { return false; }
 
     let primary: String = classification.affiliationLabel;

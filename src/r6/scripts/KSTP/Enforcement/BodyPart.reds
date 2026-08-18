@@ -201,6 +201,12 @@ public class KSTPBodyPartState extends ScriptableSystem {
     // Readback is ground truth rather than intent: these are the numbers the native handler
     // consults on its next tick. A class reading 0.00 cannot be acquired; a non-zero one can,
     // however the menu is set.
+    //
+    // It is the stat total from every source, not this mod's contribution. Other mods write the
+    // same stats on the same weapon (docs/COMPATIBILITY.md), so a class can read a value KSTP
+    // never wrote, and one this mod granted reads as its own 2 plus theirs. A reading that is not
+    // 0 or a multiple of 2 has another writer in it by definition. Diagnosing from these numbers
+    // without allowing for that produced two false defect reports.
     if KSTPLog.DebugEnabled() {
       let readback: String = "";
       let st: gamedataStatType;
@@ -219,7 +225,7 @@ public class KSTPBodyPartState extends ScriptableSystem {
       if StrLen(denied) == 0 {
         denied = "(none) ";
       };
-      KSTPLog.Debug(s"bodypart: protocol=\(p.displayName) policy=\(policyName) | denied: \(denied)| track stats now: \(readback)");
+      KSTPLog.Debug(s"bodypart: protocol=\(p.displayName) policy=\(policyName) | denied: \(denied)| weapon totals, all sources: \(readback)");
     };
 
     // Gate off: the stats are treated as latched when the weapon came up, so force a re-latch.

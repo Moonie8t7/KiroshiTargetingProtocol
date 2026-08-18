@@ -102,7 +102,7 @@ cache, both on the system:
 | Reader | Requires | Effect while it is false |
 |---|---|---|
 | `IsArmed()` | tier >= 1, and a smart weapon in the right hand | Nothing is applied to the weapon; the overlay reads `OFFLINE` |
-| `FactionAxisAvailable()` | tier >= 1, whichever grade that is (ADR 0009) | Targets are classified and labeled, and none are suppressed |
+| `FactionAxisAvailable()` | tier >= 1, whichever grade that is (ADR 0009) | Nothing is suppressed, and the overlay does not draw at all (ADR 0016) |
 
 `GetCyberwareTier()` returns the cached number for callers that want the tier itself rather than a
 verdict.

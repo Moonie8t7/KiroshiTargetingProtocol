@@ -2,6 +2,9 @@ docs/evidence/
 tools/.deploy-manifests/
 *.disabled
 
+# Throwaway CET console snippets used while diagnosing a single session.
+kstp-cet-*.lua
+
 # WolvenKit build outputs. Pack regenerates them, and the result that ships is committed
 # separately as src/archive/pc/mod/kstp.archive (ADR 0015).
 src/archive/source/**/packed/

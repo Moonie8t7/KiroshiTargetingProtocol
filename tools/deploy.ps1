@@ -267,7 +267,7 @@ if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf)) {
 $manifestPath = Get-ManifestPath -GameRoot $GamePath
 
 Write-Host ''
-Write-Host "KSTP deploy $KSTPVersion" -ForegroundColor White
+Write-Host "KSTP deploy tool $KSTPVersion (mod version is in VERSION)" -ForegroundColor White
 Write-Note "project  : $ProjectRoot"
 Write-Note "game     : $GamePath  (from $gameSource)"
 Write-Note "manifest : $manifestPath"
