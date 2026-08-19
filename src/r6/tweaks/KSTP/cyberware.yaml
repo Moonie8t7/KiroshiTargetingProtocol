@@ -489,47 +489,354 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
 # ---------------------------------------------------------------------------
 # Ripperdoc stock
 #
-# One entry, not eleven. A vendor that stocked the whole ladder at once would let a
-# level 5 player buy tier 5++ outright and would make nextUpgradeItem pointless. The
-# stocked record is the tier 3 Rare: the middle of the ladder, and the lowest grade that
-# carries the Intelligence attunement. The other ten are reached through the ripperdoc
-# upgrade panel, which walks the nextUpgradeItem chain in both directions from whatever is
-# installed.
+# The whole ladder, at every ripperdoc, gated by player level.
 #
-# Victor Vektor (Watson / Little China) is the only ripperdoc vendor ID confirmable
-# against the 2.31 dump: it appears verbatim in
-# cyberpunk/systems/marketSystem/vendor.script as t"Vendors.wat_lch_ripperdoc_01". The
-# rest of the ripperdoc roster is TweakDB-only data with no script reference, and
-# appending to a misspelled vendor creates a dead record instead of erroring, so no
-# other IDs are guessed here.
+# An earlier revision stocked one grade at one vendor, on the reasoning that stocking
+# eleven would let a low-level player buy tier 5++ outright. That is not how vendor
+# stock works. generationPrereqs on a VendorItem_Record decides whether the entry is
+# generated at all, and LootPrereqs.PlayerLevel_Tier_N_Start_Prereq is the vanilla gate
+# for exactly this: the entry does not appear until the player reaches that tier. Every
+# grade can therefore be stocked at once and the game produces the usual curve, common
+# early and legendary late, without the mod scheduling anything.
 #
-# itemStock is array<foreign_key:VendorItem_Record> (orphans.script:23750, :23862). The
-# stock entry is declared once as a named VendorItem record and appended to the vendor
-# by TweakDBID rather than inlined into the array. Both forms parse; the inline
-# {item:, quantity:} mapping under !append is what wannabeEdgerunner.yaml:515-533 ships.
-# A named record plus !append-once is idempotent, so a TweakXL hot reload cannot stack
-# duplicate stock entries. Scalar-append precedent: Custom Map Markers
-# NewFilterItem.yaml:22-23, and Virtual Car Dealer
-# basic_22000_chevalier_combat_cab.yaml:15.
+# Precedent for stocking several qualities of one item at a single vendor and letting
+# the prereqs sort them out: Militech_VMC_Sight.yaml stocks Common, Uncommon, Rare and
+# Epic side by side. Precedent for the prereq itself: AkitaXC_Shotgun.yaml gates its
+# suppressor behind LootPrereqs.PlayerLevel_Tier_5_Start_Prereq.
 #
-# quantity is array<foreign_key:StatModifier_Record> (VendorWare_Record,
-# orphans.script:16541). Vendors.Always_Present is vanilla, used verbatim by
-# wannabeEdgerunner.yaml:518.
+# LegendaryCWLevelAvailabilityAtVendor is vanilla's own gate for legendary cyberware and
+# is used here for the three Legendary grades rather than the plain tier 5 prereq, so
+# they follow the same availability rule as CausticClinchStrongArms and the other
+# legendary implants.
 #
-# To stock another ripperdoc, reuse the same VendorItem record under that vendor's ID:
+# The vendor list is every ripperdoc ID in active use across the installed mod corpus,
+# rather than IDs guessed from the script dump. Only wat_lch_ripperdoc_01 is confirmable
+# against 2.31 scripts (cyberpunk/systems/marketSystem/vendor.script), which is why an
+# earlier revision shipped that one alone. Appending to a misspelled vendor creates a
+# dead record instead of erroring, so a wrong ID here costs stock at that ripperdoc and
+# nothing else.
 #
-#   Vendors.<vendor_id>.itemStock:
-#     - !append-once KSTP.VendorItem_Coprocessor
+# itemStock is array<foreign_key:VendorItem_Record> (orphans.script:23750, :23862).
+# Named records plus !append-once are idempotent, so a TweakXL hot reload cannot stack
+# duplicate stock entries. quantity is array<foreign_key:StatModifier_Record>
+# (VendorWare_Record, orphans.script:16541); Vendors.Always_Present is vanilla.
 # ---------------------------------------------------------------------------
 
-KSTP.VendorItem_Coprocessor:
+KSTP.Stock_Common:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorCommon
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_1_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_CommonPlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorCommonPlus
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_1_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_Uncommon:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorUncommon
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_2_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_UncommonPlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorUncommonPlus
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_2_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_Rare:
   $type: gamedataVendorItem_Record
   item: Items.KSTPKiroshiIFFCoprocessorRare
-  quantity:
-    - Vendors.Always_Present
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_3_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_RarePlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorRarePlus
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_3_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_Epic:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorEpic
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_4_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_EpicPlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorEpicPlus
+  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_4_Start_Prereq ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_Legendary:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorLegendary
+  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_LegendaryPlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorLegendaryPlus
+  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
+  quantity: [ Vendors.Always_Present ]
+
+KSTP.Stock_LegendaryPlusPlus:
+  $type: gamedataVendorItem_Record
+  item: Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus
+  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
+  quantity: [ Vendors.Always_Present ]
+
+# Every ripperdoc. The same eleven stock records are appended to each, so the tier
+# prereqs above are the only thing deciding what a player sees.
 
 Vendors.wat_lch_ripperdoc_01.itemStock:
-  - !append-once KSTP.VendorItem_Coprocessor
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wat_kab_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wat_kab_ripperdoc_02.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wat_kab_ripperdoc_03.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wat_nid_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wbr_jpn_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wbr_jpn_ripperdoc_02.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.wbr_hil_ripdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.hey_spr_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.cct_dtn_ripdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.std_arr_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.std_rcr_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.pac_wwd_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.bls_ina_se1_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.bls_ina_se1_ripperdoc_02.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.cz_stadium_ripperdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.cz_con_ripdoc_01.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.cz_monument_ripperdoc_farida.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
+
+Vendors.cz_monument_ripperdoc_anderson.itemStock:
+  - !append-once KSTP.Stock_Common
+  - !append-once KSTP.Stock_CommonPlus
+  - !append-once KSTP.Stock_Uncommon
+  - !append-once KSTP.Stock_UncommonPlus
+  - !append-once KSTP.Stock_Rare
+  - !append-once KSTP.Stock_RarePlus
+  - !append-once KSTP.Stock_Epic
+  - !append-once KSTP.Stock_EpicPlus
+  - !append-once KSTP.Stock_Legendary
+  - !append-once KSTP.Stock_LegendaryPlus
+  - !append-once KSTP.Stock_LegendaryPlusPlus
 
 # ---------------------------------------------------------------------------
 # Item icon

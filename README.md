@@ -76,10 +76,10 @@ unaffected.
 ## Installation
 
 1. Install the required frameworks listed above.
-2. Extract the archive into the Cyberpunk 2077 install folder, so that `r6\`, `archive\` and `bin\`
-   land on top of the folders already there.
-3. Launch the game and acquire the implant. Buy the Kiroshi IFF Targeting Coprocessor from Viktor
-   Vektor's clinic in Little China, or grant any tier from the CET console:
+2. Extract the archive into the Cyberpunk 2077 install folder, so that `r6` and `archive` land
+   on top of the folders already there.
+3. Launch the game and acquire the implant. Buy the Kiroshi IFF Targeting Coprocessor from any
+   ripperdoc, or grant any tier from the CET console:
 
    ```lua
    Game.AddToInventory("Items.KSTPKiroshiIFFCoprocessorCommon", 1)
@@ -144,12 +144,10 @@ same capacity from its first grade to its last. Bioconductor costs 16 at tier 1 
 Only the price in eddies scales with quality, through the standard cyberware price chain, so a
 higher tier costs money rather than headroom.
 
-Stock and upgrades run through the ripperdoc. One grade is stocked, the tier 3 Rare, at Viktor
-Vektor's clinic in Little China, Watson, which is the one ripperdoc vendor ID confirmable against
-the decompiled 2.31 scripts. Ripperdoc inventories are filtered by player level, so it appears once
-the player is high enough for it. The other ten grades are reached through the ripperdoc upgrade
-panel: each record chains to the next, so an installed implant is upgraded in place at the clinic
-rather than replaced.
+Stock and upgrades run through the ripperdoc. All eleven grades are stocked at every ripperdoc
+in the game, each gated by the vanilla player-level prereq for its tier, so the ladder appears the
+way any other cyberware line does: common grades early, legendary grades late. An installed
+implant can also be upgraded in place at the clinic, since each record chains to the next.
 
 All eleven grades share one `cyberwareType`, so only one can be installed at a time. The mod reads
 the highest installed grade and treats a plus grade as its base tier: Rare and Rare+ are both
@@ -246,8 +244,8 @@ player's whole script load order down with it.
 framework's absence, meaning the nameless implant without Codeware, the icon falling back without
 ArchiveXL, compiled defaults without Mod Settings, and inert hotkeys without Input Loader. Each of
 those has a compile-verified code path behind it and degrades cosmetically by design, but none has
-been observed. The ripperdoc upgrade panel has not been seen rendering the ladder, and only the
-Rare grade is vendor stocked, so the other ten have only ever been granted from the console.
+been observed. The ripperdoc upgrade panel has not been seen rendering the ladder, and the
+level-gated vendor stock has not been watched appearing as the player levels.
 
 ## Compatibility
 

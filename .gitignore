@@ -6,6 +6,10 @@ tools/.deploy-manifests/
 # from any tagged commit, so the tag is the record rather than the binary.
 dist/
 
+# Copy for the Nexus mod page. Lives here for convenience; the page itself is the
+# published version, so this is a working copy rather than a source of truth.
+Nexus/
+
 # Throwaway CET console snippets used while diagnosing a single session.
 kstp-cet-*.lua
 
