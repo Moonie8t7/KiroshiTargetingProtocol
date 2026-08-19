@@ -26,3 +26,4 @@ codes against live in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | [0014](0014-the-tracked-set-is-bounded-and-seeded.md) | The tracked set is bounded and seeded | Accepted |
 | [0015](0015-the-mod-ships-an-archive.md) | The mod ships an archive | Accepted; reverses the shipping constraint in [0004](0004-no-localization-archive.md) |
 | [0016](0016-the-overlay-requires-the-implant.md) | The overlay requires the implant | Accepted |
+| [0017](0017-inherit-from-vanilla-records.md) | Inherit from vanilla records rather than reconstructing them | Accepted |

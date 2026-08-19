@@ -168,16 +168,30 @@ KSTP.PkgTargetingProtocol_T$(tier):
       reapplyOnWeaponChange: False
       removeAfterActionCall: False
       removeAfterPrereqCheck: False
-      statModifierGroups: []
-      # The only field that varies across the five packages. Authored in stats.yaml.
+          # The only field that varies across the five packages. Authored in stats.yaml.
       statGroup: KSTP.Grp_Coprocessor_T$(tier)
 
 # ---------------------------------------------------------------------------
 # The item
 #
-# Written out as a full gamedataItem_Record rather than $base-cloned from a vanilla
-# cyberware record: no frontal-cortex item ID is confirmable against the 2.31 dump, and
-# a $base pointing at a record that does not exist fails silently.
+# $base-cloned from Items.AdvancedSubdermalCoProcessor$(quality), the vanilla frontal-cortex
+# coprocessor, which carries all eleven quality steps. Only the sixteen fields below are
+# declared; everything else is inherited.
+#
+# It was hand-authored as a full gamedataItem_Record until 19 August 2026, on the reasoning
+# that no frontal-cortex item ID could be confirmed against the script dump. Three can be read
+# straight off an equipped loadout (AdvancedBioConductors, AdvancedExDisk,
+# AdvancedSubdermalCoProcessor), and BlackChrome has shipped $base-cloned cyberware in the
+# reference corpus throughout.
+#
+# The hand-authored version declared seventy-one fields and the implant rendered with no
+# rolled stat block: a ripperdoc offers every implant a random per-tier bonus roll, and one of
+# those fifty-nine surplus overrides suppressed it. Which one was never identified, because
+# the record overrode nearly every field the game has. Declaring less fixed what declaring
+# more could not.
+#
+# The rule this leaves: override only what must differ from the parent. A field written out
+# to its apparent default is not neutral, it is an assertion that beats inheritance.
 #
 # Template variables:
 #   quality   the quality suffix. It builds the record name and the Quality.* value, so
@@ -201,7 +215,7 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
     - { quality: Legendary,         next: Items.KSTPKiroshiIFFCoprocessorLegendaryPlus,   tier: 5 }
     - { quality: LegendaryPlus,     next: Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus, tier: 5 }
     - { quality: LegendaryPlusPlus, next: None,                                           tier: 5 }
-  $type: gamedataItem_Record
+  $base: Items.AdvancedSubdermalCoProcessor$(quality)
 
   # Naming and register.
   #
@@ -227,33 +241,13 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
   displayName: LocKey#kstp_coprocessor_name
   localizedDescription: LocKey#kstp_coprocessor_flavor
   localizedName: LocKey#kstp_coprocessor_name
-  friendlyName: ''
-
-  equipArea: EquipmentArea.FrontalCortexCW
-  itemCategory: ItemCategory.Cyberware
-  itemType: ItemType.Cyberware
-  # Free CName, not a foreign key. Two items sharing a cyberwareType cannot both be
-  # equipped, so this value is unique to the mod. All eleven tiers share it, which is what
-  # stops two tiers of the same implant occupying two frontal cortex slots and is what lets
-  # KSTP_CyberwareTier() assume at most one match (Policy.reds:80-114).
   cyberwareType: KSTPTargetingCoprocessor
   # Frontal cortex has no mandatory core implant, so this must not claim to be one.
-  isCoreCW: False
   quality: Quality.$(quality)
 
   # The ripperdoc upgrade chain. Each tier names the record one step up; the top tier
   # names None, which is what ends the chain and hides the upgrade button.
   nextUpgradeItem: $(next)
-  upgradeCostMult: 1
-
-  blueprint: Items.GenericShardableCyberwareBlueprint
-  minigameInstance: minigame_v2.DefaultItemMinigame
-  crosshair: Crosshairs.None
-  # The shared placeholder every vanilla cyberware item carries. Nothing on the item icon
-  # path reads it (see iconPath below), and a CET probe confirms vanilla frontal-cortex
-  # implants all point here with an atlasPartName of the CName `undefined`. It is set only
-  # so the record matches the vanilla shape rather than differing in a field for no reason.
-  # Confirmed present in TweakDB, and returned as a literal by UIItemsHelper.script:142.
   icon: UIIcon.ItemIcon
 
   # A bare UIIcon record suffix, never an inline icon block. The inventory resolver reads
@@ -278,115 +272,9 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
 
   # No world entity: a frontal-cortex implant has no visual representation, so
   # nothing is spawned or attached.
-  entityName: ''
-  appearanceName: ''
-  animSetResource: ''
-  animFeatureName: ItemData
-  animName: ui_garment_pose
-  parentAttachmentType: ParentAttachmentType.Slot
-
-  canDrop: True
-  deprecated: False
-  enableNpcRPGData: False
-  garmentOffset: 0
-  isCached: False
-  isCustomizable: False
-  isGarment: False
-  isPart: False
-  isSingleInstance: False
-  mass: 1
-  powerLevelDeterminedByParent: False
-  qualityRestrictedByParent: False
-  replicateWhenNotActive: False
-  savable: False
-  useHeadgearGarmentAggregator: False
-  useNewSpawnMethod: False
-  # Must stay True while `variants:` below carries the Humanity cost record. False with a
-  # populated variants list is the silent-failure shape: the record parses and the implant
-  # equips, and it costs nothing.
-  usesVariants: True
-
-  animationParameters: []
-  appearanceSuffixes: []
-  appearanceSuffixesOwnerOverride: []
-  attachmentSlots: []
-  cameraForward: {x: 0, y: 0, z: 0}
-  cameraUp: {x: 0, y: 0, z: 0}
-  connections: []
-  equipAreas: []
-  equipPrereqs: []
-  gameplayRestrictions: []
-  hairSkinnedMeshComponents: []
-  objectActions: []
-  parts: []
-  placementSlots: []
-  previewBBoxOverride: []
-  requiredSlots: []
-  slotPartList: []
-  slotPartListPreset:
-    - Items.GenericItemRootPreset
-  statModifierGroups: []
-  statPools: []
-  visualTags: []
-  weakspots: []
-
-  # Cyberware capacity cost.
-  #
-  # Remaining capacity is HumanityAvailable minus HumanityOverallocated
-  # (player.script:2912), so an implant charges capacity by subtracting from the former.
-  # An item declaring no such modifier is free, which this one should not be.
-  #
-  # Flat at 6 across all eleven tiers. Capacity does not track quality anywhere on the
-  # vanilla roster: the Bioconductor charges 16 at tier 1 and 16 at tier 5++, and every
-  # step between. Upgrading an implant buys effect, never a bigger bill, so the cost sits
-  # outside the $instances table on purpose.
-  #
-  # Costed at 6 against the vanilla frontal cortex roster, which spans 3 to 50. What the
-  # cost tracks is how broadly the implant pays off:
-  #
-  #   conditional utility   Kerenzikov Boost System 3, Mechatronic Core 5, Self-ICE 5
-  #   general utility       RAM Upgrade 8, Camillo RAM Manager 8, Ex-Disk 10
-  #   broad passives        Newton Module 14, Bioconductor 16, Memory Boost 18
-  #   iconics               RAM Reallocator 40, Quantum Tuner 45, Axolotl 48
-  #
-  # 6 places this just above the conditional cluster. Head and weak spot tracking on a
-  # smart weapon is a direct damage gain and the protocol layer adds target selection on
-  # top, which puts it over Mechatronic Core. It stays well under the general-utility band
-  # because it is inert without a smart weapon in hand, the same conditionality that keeps
-  # Mechatronic Core and the Kerenzikov Boost System cheap.
-  #
-  # Attunement is not part of this cost. It is Intelligence, from tier 3 up, granted by the
-  # separate block lower in this file, and it sits at tier 3 because that is where the vanilla
-  # ladder places one: the Bioconductor gains "Intelligence Attuned" at tier 3.
-  #
-  # Charged through the vanilla Variants.Humanity<N>Cost records. Item_Record.Variants() is
-  # typed array<wref<RandomVariant_Record>> (orphans.script:15191), which reads as unrelated
-  # to capacity, but that generic type is what the game uses for it. Every shipping cyberware
-  # mod costs its implants this way: BlackChrome spans Humanity14Cost through Humanity48Cost,
-  # ChipwareExpansion uses Humanity4Cost on its cyber liver and Humanity0Cost on its neural
-  # processors. Records confirmed present: 0, 2, 4, 5, 6, 8, 10, 12, 14, 15, 16, 18, 20, 25,
-  # 30, 35, 48, plus TinkererVariant forms at 10, 20, 25 and 30.
-  #
-  # A HumanityAvailable stat modifier on the item is not the mechanism and no shipping record
-  # uses one.
-
-  # Attunement, display half.
-  #
-  # This modifier grants the player nothing. BaseStats.AttunementHelper is stat enum 50 and
-  # is read only by the tooltip layer (MinimalItemTooltipModsAttunementData,
-  # UIInventoryItemModAttunementData, inventoryItemMods.script:130). It exists purely to
-  # supply the figure the attunement chip prints; the real bonus is granted by the
-  # Attunements record in OnEquip below.
-  #
-  # The value is the percentage shown per attribute point, which is the package's own
-  # multiplier times one hundred. Attunements.IntelligenceSmartWeaponDamage grants +0.1%
-  # smart weapon damage per point of Intelligence, so the multiplier is 0.001 and the figure
-  # here is 0.1. The vanilla Attunements.IntelligenceAllDamage is the same relationship one
-  # decimal place down: multiplier 0.0005, displayed 0.05.
-  #
-  # Empty on the base record. The attunement is gated to tier 3 and above and is therefore
-  # appended by the separate block below rather than set here.
-  statModifiers: []
+  statModifiers:
+    - Items.ItemArmorToArmor
+    - Items.AdvancedFrontalCortexModule_inline0
   variants: [Variants.Humanity6Cost]
 
   # The cyberware pricing chain, in the order a shipping cyberware mod applies it
@@ -421,18 +309,6 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
     - Cyberware
     - HideInBackpackUI
 
-  OnAttach: []
-  OnLooted: []
-  # Each package listed here becomes a row on the cyberware card: the tooltip walks OnEquip and
-  # keeps every package whose UIData has a non-empty description (inventoryItemMods.script:144-163).
-  # A row is promoted to the attribute-attuned chip when that package's UIData stats array
-  # contains BaseStats.AttunementHelper, which the vanilla attunement record already does
-  # (inventoryItemMods.script:170-173).
-  #
-  # Attunements.IntelligenceSmartWeaponDamage, appended at tier 3 and above by the block
-  # below, is the half that actually grants the bonus. Intelligence is the attribute that
-  # governs smart weapons, and this is the vanilla record written for exactly that, rather
-  # than the generic IntelligenceAllDamage.
   OnEquip:
     - KSTP.PkgTargetingProtocol_T$(tier)
 
@@ -489,25 +365,26 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
 # ---------------------------------------------------------------------------
 # Ripperdoc stock
 #
-# The whole ladder, at every ripperdoc, gated by player level.
+# The five base qualities, at every ripperdoc, gated by the vanilla cyberware availability
+# records.
 #
-# An earlier revision stocked one grade at one vendor, on the reasoning that stocking
-# eleven would let a low-level player buy tier 5++ outright. That is not how vendor
-# stock works. generationPrereqs on a VendorItem_Record decides whether the entry is
-# generated at all, and LootPrereqs.PlayerLevel_Tier_N_Start_Prereq is the vanilla gate
-# for exactly this: the entry does not appear until the player reaches that tier. Every
-# grade can therefore be stocked at once and the game produces the usual curve, common
-# early and legendary late, without the mod scheduling anything.
+# The whole block is a copy of BlackChrome's zVendors.yaml: inline anonymous entries appended
+# into itemStock under $instances, gated by LootPrereqs.$(quality)CWLevelAvailabilityAtVendor,
+# one record per quality. That is the family the base game uses for cyberware, as against the
+# PlayerLevel_Tier_* records which belong to loot and weapons.
 #
-# Precedent for stocking several qualities of one item at a single vendor and letting
-# the prereqs sort them out: Militech_VMC_Sight.yaml stocks Common, Uncommon, Rare and
-# Epic side by side. Precedent for the prereq itself: AkitaXC_Shotgun.yaml gates its
-# suppressor behind LootPrereqs.PlayerLevel_Tier_5_Start_Prereq.
+# Only base qualities are stocked. The six Plus grades are upgrade targets, reached by paying a
+# ripperdoc to walk nextUpgradeItem. No mod in the reference corpus stocks a Plus grade.
 #
-# LegendaryCWLevelAvailabilityAtVendor is vanilla's own gate for legendary cyberware and
-# is used here for the three Legendary grades rather than the plain tier 5 prereq, so
-# they follow the same availability rule as CausticClinchStrongArms and the other
-# legendary implants.
+# A warning for anyone changing this. Vendor inventory is generated once per vendor and held
+# until that vendor restocks, so an edit here has no visible effect at a clinic the player has
+# already opened. Four successive configurations were judged against cached stock during
+# development and all four read as no-ops. Test at a ripperdoc never visited in that save, or
+# skip 48 in-game hours first.
+#
+# The implant is deliberately absent from every loot table. Frontal cortex cyberware is bought
+# from a ripperdoc or given as a quest reward; it is not found in containers or on bodies, so
+# no LootTables entry belongs here. The absence is a decision, not an omission.
 #
 # The vendor list is every ripperdoc ID in active use across the installed mod corpus,
 # rather than IDs guessed from the script dump. Only wat_lch_ripperdoc_01 is confirmable
@@ -522,321 +399,40 @@ Items.KSTPKiroshiIFFCoprocessor$(quality):
 # (VendorWare_Record, orphans.script:16541); Vendors.Always_Present is vanilla.
 # ---------------------------------------------------------------------------
 
-KSTP.Stock_Common:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorCommon
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_1_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_CommonPlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorCommonPlus
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_1_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_Uncommon:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorUncommon
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_2_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_UncommonPlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorUncommonPlus
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_2_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_Rare:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorRare
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_3_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_RarePlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorRarePlus
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_3_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_Epic:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorEpic
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_4_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_EpicPlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorEpicPlus
-  generationPrereqs: [ LootPrereqs.PlayerLevel_Tier_4_Start_Prereq ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_Legendary:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorLegendary
-  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_LegendaryPlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorLegendaryPlus
-  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
-  quantity: [ Vendors.Always_Present ]
-
-KSTP.Stock_LegendaryPlusPlus:
-  $type: gamedataVendorItem_Record
-  item: Items.KSTPKiroshiIFFCoprocessorLegendaryPlusPlus
-  generationPrereqs: [ LootPrereqs.LegendaryCWLevelAvailabilityAtVendor ]
-  quantity: [ Vendors.Always_Present ]
-
-# Every ripperdoc. The same eleven stock records are appended to each, so the tier
-# prereqs above are the only thing deciding what a player sees.
-
-Vendors.wat_lch_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wat_kab_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wat_kab_ripperdoc_02.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wat_kab_ripperdoc_03.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wat_nid_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wbr_jpn_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wbr_jpn_ripperdoc_02.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.wbr_hil_ripdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.hey_spr_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.cct_dtn_ripdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.std_arr_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.std_rcr_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.pac_wwd_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.bls_ina_se1_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.bls_ina_se1_ripperdoc_02.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.cz_stadium_ripperdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.cz_con_ripdoc_01.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.cz_monument_ripperdoc_farida.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
-
-Vendors.cz_monument_ripperdoc_anderson.itemStock:
-  - !append-once KSTP.Stock_Common
-  - !append-once KSTP.Stock_CommonPlus
-  - !append-once KSTP.Stock_Uncommon
-  - !append-once KSTP.Stock_UncommonPlus
-  - !append-once KSTP.Stock_Rare
-  - !append-once KSTP.Stock_RarePlus
-  - !append-once KSTP.Stock_Epic
-  - !append-once KSTP.Stock_EpicPlus
-  - !append-once KSTP.Stock_Legendary
-  - !append-once KSTP.Stock_LegendaryPlus
-  - !append-once KSTP.Stock_LegendaryPlusPlus
+Vendors.$(vendor):
+  $instances:
+    - { vendor: wat_lch_ripperdoc_01 }
+    - { vendor: wat_kab_ripperdoc_01 }
+    - { vendor: wat_kab_ripperdoc_02 }
+    - { vendor: wat_kab_ripperdoc_03 }
+    - { vendor: wat_nid_ripperdoc_01 }
+    - { vendor: wbr_jpn_ripperdoc_01 }
+    - { vendor: wbr_jpn_ripperdoc_02 }
+    - { vendor: wbr_hil_ripdoc_01 }
+    - { vendor: hey_spr_ripperdoc_01 }
+    - { vendor: cct_dtn_ripdoc_01 }
+    - { vendor: std_arr_ripperdoc_01 }
+    - { vendor: std_rcr_ripperdoc_01 }
+    - { vendor: pac_wwd_ripperdoc_01 }
+    - { vendor: bls_ina_se1_ripperdoc_01 }
+    - { vendor: bls_ina_se1_ripperdoc_02 }
+    - { vendor: cz_stadium_ripperdoc_01 }
+    - { vendor: cz_con_ripdoc_01 }
+    - { vendor: cz_monument_ripperdoc_farida }
+    - { vendor: cz_monument_ripperdoc_anderson }
+  itemStock:
+    - !append
+      $instances:
+        - { quality: Common }
+        - { quality: Uncommon }
+        - { quality: Rare }
+        - { quality: Epic }
+        - { quality: Legendary }
+      generationPrereqs:
+        - LootPrereqs.$(quality)CWLevelAvailabilityAtVendor
+      item: Items.KSTPKiroshiIFFCoprocessor$(quality)
+      quantity:
+        - Vendors.Always_Present
 
 # ---------------------------------------------------------------------------
 # Item icon

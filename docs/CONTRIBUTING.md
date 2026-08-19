@@ -191,6 +191,27 @@ by git.
 
 ---
 
+## Authoring TweakXL records
+
+`$base` from the closest vanilla record and declare only what must differ (ADR 0017).
+
+A field written out to what looks like its default is not neutral. It is an assertion that
+beats inheritance, and it opts the record out of whatever the parent supplies, silently. The
+coprocessor was hand-authored with seventy-one fields and shipped without the random stat
+bonuses a ripperdoc rolls onto every implant; the cause was one surplus override among
+fifty-nine, never identified, and the fix was to declare sixteen fields instead of adding a
+seventy-second.
+
+Two checks before writing a record from scratch:
+
+1. **Does a vanilla equivalent exist?** IDs that cannot be found in the script dump can often
+   be read at runtime. A CET query over an equipped loadout named three frontal-cortex records
+   that the dump does not expose.
+2. **Has a mod in the reference corpus solved this?** `r6/tweaks` in a modded install is
+   hundreds of worked examples. Copy the shape of one that works rather than reconstructing it.
+
+---
+
 ## Hard rules
 
 These are not preferences. Each one exists because breaking it has a specific, known failure

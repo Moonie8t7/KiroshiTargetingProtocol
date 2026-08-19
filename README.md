@@ -144,10 +144,16 @@ same capacity from its first grade to its last. Bioconductor costs 16 at tier 1 
 Only the price in eddies scales with quality, through the standard cyberware price chain, so a
 higher tier costs money rather than headroom.
 
-Stock and upgrades run through the ripperdoc. All eleven grades are stocked at every ripperdoc
-in the game, each gated by the vanilla player-level prereq for its tier, so the ladder appears the
-way any other cyberware line does: common grades early, legendary grades late. An installed
-implant can also be upgraded in place at the clinic, since each record chains to the next.
+Stock and upgrades run through the ripperdoc. The five base qualities are stocked at every
+ripperdoc in the game, each behind the vanilla LootPrereqs.<Quality>CWLevelAvailabilityAtVendor
+record for its grade, so the ladder appears the way any other cyberware line does. The six Plus
+grades are never sold: they are upgrade targets, reached by paying a ripperdoc to walk the
+nextUpgradeItem chain, which is how vanilla handles them.
+
+The item record is a `$base` clone of `Items.AdvancedSubdermalCoProcessor`, the vanilla
+frontal-cortex coprocessor, and declares only the sixteen fields that must differ. Everything
+else is inherited, including the random per-tier stat bonuses a ripperdoc rolls onto cyberware
+when it stocks it, so the implant's card reads like any other implant on the shelf.
 
 All eleven grades share one `cyberwareType`, so only one can be installed at a time. The mod reads
 the highest installed grade and treats a plus grade as its base tier: Rare and Rare+ are both
