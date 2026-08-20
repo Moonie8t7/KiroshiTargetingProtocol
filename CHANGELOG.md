@@ -3,7 +3,7 @@
 Notable changes to the Kiroshi Smart Targeting Protocol. Versions follow
 [semantic versioning](https://semver.org/); the version itself lives in `VERSION`.
 
-## 0.1.0 - unreleased
+## 0.1.0 - 2026-08-20
 
 First release. Everything below is new.
 
@@ -11,7 +11,16 @@ First release. Everything below is new.
 
 A Frontal Cortex cyberware, the Kiroshi IFF Targeting Coprocessor, in eleven grades from Common to
 Legendary++. Capacity costs 6 at every grade, matching the vanilla convention; only the price
-scales. Sold by ripperdocs.
+scales.
+
+The five base qualities are stocked by ripperdocs across Night City, each behind the vanilla
+LootPrereqs record for its grade, so which grades a clinic offers follows player level the way any
+other cyberware line does. The six Plus grades are never sold; they are upgrade targets, reached by
+paying a ripperdoc to walk the nextUpgradeItem chain.
+
+The item record is a $base clone of the vanilla frontal-cortex coprocessor and declares only the
+sixteen fields that must differ, so it inherits the random per-tier stat bonuses a ripperdoc rolls
+onto cyberware when it stocks it.
 
 Fitting it is what turns the mod on. With no coprocessor, nothing is enforced and the overlay does
 not draw.

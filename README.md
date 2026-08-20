@@ -144,11 +144,11 @@ same capacity from its first grade to its last. Bioconductor costs 16 at tier 1 
 Only the price in eddies scales with quality, through the standard cyberware price chain, so a
 higher tier costs money rather than headroom.
 
-Stock and upgrades run through the ripperdoc. The five base qualities are stocked at every
-ripperdoc in the game, each behind the vanilla LootPrereqs.<Quality>CWLevelAvailabilityAtVendor
-record for its grade, so the ladder appears the way any other cyberware line does. The six Plus
-grades are never sold: they are upgrade targets, reached by paying a ripperdoc to walk the
-nextUpgradeItem chain, which is how vanilla handles them.
+Stock and upgrades run through the ripperdoc. The five base qualities are stocked at nineteen
+ripperdoc vendors across Night City, each behind the vanilla
+LootPrereqs.<Quality>CWLevelAvailabilityAtVendor record for its grade, so the ladder appears the
+way any other cyberware line does. The six Plus grades are never sold: they are upgrade targets,
+reached by paying a ripperdoc to walk the nextUpgradeItem chain, which is how vanilla handles them.
 
 The item record is a `$base` clone of `Items.AdvancedSubdermalCoProcessor`, the vanilla
 frontal-cortex coprocessor, and declares only the sixteen fields that must differ. Everything
@@ -238,7 +238,9 @@ leaving to be discovered.
 refusals holding across weapon swaps and groups found after the menu closed; vehicle exclusion;
 the overlay in all three visibility modes; enforcement starting and stopping with the coprocessor
 fitted and removed; enforcement surviving a save load; the custom icon; and roughly 130 NPCs under
-simultaneous suppression without incident.
+simultaneous suppression without incident. On the ripperdoc side: the implant appearing in stock,
+the grades on offer tracking player level with the Plus grades absent, and the item card carrying
+the rolled per-tier stat bonuses.
 
 **Verified without playing.** The eleven-grade upgrade chain, walked end to end from `Common` to
 `LegendaryPlusPlus` with every `nextUpgradeItem` checked against a real record. The mod also
@@ -250,8 +252,10 @@ player's whole script load order down with it.
 framework's absence, meaning the nameless implant without Codeware, the icon falling back without
 ArchiveXL, compiled defaults without Mod Settings, and inert hotkeys without Input Loader. Each of
 those has a compile-verified code path behind it and degrades cosmetically by design, but none has
-been observed. The ripperdoc upgrade panel has not been seen rendering the ladder, and the
-level-gated vendor stock has not been watched appearing as the player levels.
+been observed. The ripperdoc upgrade panel has not been seen rendering the ladder. Vendor stock has
+been checked at one level band rather than watched across a playthrough, so the lower grades
+appearing and retiring as the player levels is inferred from the vanilla prereq records rather than
+seen.
 
 ## Compatibility
 
